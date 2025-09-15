@@ -1,0 +1,317 @@
+# Development Environment Setup
+
+## Project Structure Overview
+
+This is a **Nest.js + Nuxt.js monorepo** with the following structure:
+
+```
+nest-nuxt-app-test/
+├── backend/           # NestJS API server
+├── frontend/          # Nuxt.js client application  
+├── docs/             # Architecture documentation
+└── CLAUDE.md         # AI assistant guidelines
+```
+
+## Environment Configuration
+
+### Environment Loading Strategy
+**Backend Priority:** `.env.${NODE_ENV}` → `.env.local` → `.env`  
+**Frontend Priority:** Uses Nuxt's runtime config system with `NUXT_PUBLIC_*` prefix
+
+### Backend Environment Variables
+
+**Available Environment Files:**
+- `.env.local` - Local development (NODE_ENV=local)
+- `.env.development` - Development server (NODE_ENV=development)
+- `.env.production` - Production environment (NODE_ENV=production)
+
+#### Core Server Configuration
+```bash
+# Server Settings
+NODE_ENV=local|development|production
+PORT=3020
+SERVER_HOST=localhost  # development: your-dev-domain.com, production: api.your-production-domain.com
+
+# Logging Configuration
+LOG_HTTP_BODY=true     # production: false
+LOG_HTTP_MAX=4096      # production: 1024
+```
+
+#### Database Configuration (Multi-Database Setup)
+```bash
+# Main Database (piki_world_db)
+DB_WORLD_HOST=your-database-host.amazonaws.com
+DB_WORLD_PORT=3306
+DB_WORLD_USERNAME=your_username
+DB_WORLD_PASSWORD=your_secure_password
+DB_WORLD_DATABASE=piki_world
+DB_WORLD_DEV=false  # true for development logging
+
+# Place Database (piki_place_db)  
+DB_PLACE_HOST=your-place-db-host
+DB_PLACE_PORT=13306           # production: 3306
+DB_PLACE_USERNAME=place_username
+DB_PLACE_PASSWORD=your_place_password
+DB_PLACE_DATABASE=piki_place
+
+# Test User Database (test_user_db)
+DB_TEST_USER_HOST=your-test-db-host
+DB_TEST_USER_PORT=13306
+DB_TEST_USER_USERNAME=test_username
+DB_TEST_USER_PASSWORD=your_test_password
+DB_TEST_USER_DATABASE=nest_test
+DB_TEST_USER_DEV=false
+```
+
+**Database Connection Names:**
+- `piki_world_db`: Main application data
+- `piki_place_db`: Location/geographic data  
+- `test_user_db`: Test environment data
+
+#### Security Configuration
+```bash
+# CSRF Protection
+CSRF_SECRET=environment-specific-secret-key
+CSRF_COOKIE_MAX_AGE=1800000  # 30 minutes
+CSRF_SIZE=128
+CSRF_STRICT=false  # production: true
+
+# JWT Authentication
+JWT_ACCESS_SECRET=environment-specific-access-secret
+JWT_REFRESH_SECRET=environment-specific-refresh-secret
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=12h  # 12 hours (actual implementation)
+JWT_ISSUER=nest-nuxt-app-{env}
+JWT_AUDIENCE=nest-nuxt-app-{env}
+
+# Bcrypt & Rate Limiting
+BCRYPT_ROUNDS=10
+THROTTLE_TTL=60   # seconds
+THROTTLE_LIMIT=10 # requests per TTL window
+```
+
+#### External Services
+```bash
+# Domain Configuration
+PIKI_DOMAIN=https://marketdev.pikit.space  # production: https://piki.market
+PIKI_TALK_DOMAIN=http://121.182.91.193:36382  # production: https://aritalk.pikiworld.com
+
+# File Management
+FILE_DATA_PATH=/data/
+```
+
+#### Environment-Specific Differences
+**Local vs Development:**
+- `SERVER_HOST`: localhost vs your-dev-domain.com
+- Secrets use shorter, development-friendly values
+
+**Development vs Production:**
+- `LOG_HTTP_BODY`: true → false
+- `LOG_HTTP_MAX`: 4096 → 1024
+- `CSRF_STRICT`: false → true
+- `PIKI_DOMAIN`: marketdev.pikit.space → piki.market
+- `PIKI_TALK_DOMAIN`: HTTP with port → HTTPS domain
+- Database hosts consolidated to single RDS instance
+- Secrets use production-grade 64+ character strings
+
+### Frontend Environment Variables
+
+**Available Environment Files:**
+- `.env.local` - `NUXT_PUBLIC_BASE_URL=http://localhost:3020`
+- `.env.development` - `NUXT_PUBLIC_API_BASE=http://localhost:3020`
+- `.env.production` - `NUXT_PUBLIC_API_BASE=https://pikitalk.com`
+
+#### Core Frontend Configuration
+```bash
+# API Connection (Local)
+NUXT_PUBLIC_BASE_URL=http://localhost:3020
+NUXT_PUBLIC_APP_ENV=local
+
+# API Connection (Development) 
+NUXT_PUBLIC_API_BASE=http://localhost:3020
+NUXT_PUBLIC_APP_ENV=development
+
+# API Connection (Production)
+NUXT_PUBLIC_API_BASE=https://pikitalk.com
+NUXT_PUBLIC_APP_ENV=production
+```
+
+**Runtime Configuration Usage:**
+```typescript
+// nuxt.config.ts - Available in runtime
+runtimeConfig: {
+  public: {
+    apiBase: process.env.NUXT_PUBLIC_API_BASE || process.env.NUXT_PUBLIC_BASE_URL,
+    appEnv: process.env.NUXT_PUBLIC_APP_ENV
+  }
+}
+
+// In components/composables
+const { public: { apiBase, appEnv } } = useRuntimeConfig();
+```
+
+### ConfigService Pattern Implementation
+
+The backend uses `@nestjs/config` with factory pattern for type-safe environment variable access:
+
+```typescript
+// All configurations use ConfigService injection pattern
+export const exampleConfig = {
+  factory: (configService: ConfigService) => ({
+    port: configService.get<number>('PORT', 3020),
+    nodeEnv: configService.get<string>('NODE_ENV', 'local'),
+    isDevelopment: configService.get<string>('NODE_ENV', 'local') !== 'production'
+  })
+};
+```
+
+**Automatic API Integration:**
+The frontend automatically connects to the backend through the API plugin (`plugins/api.ts`) which:
+- Auto-manages loading states for all API calls
+- Handles JWT token injection and refresh
+- Manages CSRF token generation and validation
+- Uses runtime config for dynamic API base URL selection
+
+## Quick Start Commands
+
+### Initial Setup
+```bash
+# Install dependencies
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+### Development Servers
+```bash
+# Terminal 1: Start backend (port 3020)
+cd backend
+npm run local        # Uses .env.local
+# or
+npm run dev          # Uses .env.development
+
+# Terminal 2: Start frontend (port 3000)  
+cd frontend
+npm run local        # Uses .env.local
+# or
+npm run dev          # Uses .env.development
+```
+
+### Production Build
+```bash
+# Backend
+cd backend && npm run build
+
+# Frontend  
+cd frontend && npm run build
+```
+
+## Available Scripts
+
+### Backend Scripts
+- `npm run local` - Local development with hot reload
+- `npm run dev` - Development environment with hot reload  
+- `npm run build` - Production build
+- `npm run lint` - ESLint with auto-fix
+- `npm run format` - Prettier formatting
+- `npm run test` - Unit tests
+- `npm run test:e2e` - End-to-end tests
+- `npm run test:cov` - Test coverage
+
+### Frontend Scripts  
+- `npm run local` - Local development server (uses `.env.local`)
+- `npm run dev` - Development server (uses `.env.development`)
+- `npm run build` - Production build with optimizations
+- `npm run generate` - Static site generation (pre-rendered)
+- `npm run preview` - Preview production build locally
+
+## Server Management
+
+### Development Server Startup
+```bash
+# Terminal 1: Backend (Port 3020)
+cd backend && npm run local
+
+# Terminal 2: Frontend (Port 3000)  
+cd frontend && npm run local
+```
+
+### Server Termination
+**Graceful shutdown:** Use `Ctrl+C` in each terminal
+
+**Force cleanup:** See **[docs/port-management.md](docs/port-management.md)** for detailed port cleanup commands and troubleshooting.
+
+## API Testing During Development
+
+### Temporary File Management
+
+When testing APIs manually, temporary files like cookies may be created. To keep the project clean:
+
+```bash
+# Use temporary directory for test artifacts
+mkdir -p ./test-temp
+curl -c ./test-temp/cookies.txt "http://localhost:3020/csrf/token"
+# ... perform tests ...
+rm -rf ./test-temp
+```
+
+### Post-Testing Cleanup
+
+The `.gitignore` already includes `cookies*.txt` pattern. Always clean up after testing:
+
+```bash
+# Remove any test files created during development
+find . -maxdepth 2 -name "cookies*.txt" -delete
+find . -maxdepth 2 -name "*test*.txt" -delete
+```
+
+## Key Technologies
+
+### Backend Stack
+- **NestJS** - Node.js framework with TypeScript and modular architecture
+- **@nestjs/config** - Environment configuration with factory pattern
+- **TypeORM** - Database ORM with triple MySQL connections
+- **MySQL** - Primary database (world/place/test environments)
+- **JWT** - Authentication with refresh tokens (15min/12hr)
+- **CSRF-CSRF** - CSRF protection with configurable strictness
+- **Swagger** - API documentation (available at `/api` in development)
+- **Jest** - Testing framework with e2e support
+
+### Frontend Stack  
+- **Nuxt.js 4.1.1** - Vue.js framework with new app/ directory structure and enhanced performance
+- **Vue 3.5.21** - Frontend framework with Composition API and latest optimizations
+- **Pinia 3.0.3** - State management with readonly pattern and improved TypeScript support
+- **@nuxtjs/i18n v10** - Internationalization (15 languages, automatic lazy loading)
+- **Nitro 2.12.4** - Enhanced server engine for better performance
+- **Swiper** - Touch slider component with custom wrapper
+- **Auto-Loading System** - Automatic loading states via API plugin
+
+## Automatic Loading Management
+
+**Frontend Loading System:**
+The application features automatic loading state management:
+
+1. **API Plugin Integration** (`app/plugins/api.ts`):
+   - Automatically shows loading on request start
+   - Automatically hides loading on response/error
+   - No manual loading state management required
+
+2. **LoadingComponent** (`app/components/common/LoadingComponent.vue`):
+   - Integrated in all layouts (`app/layouts/default.vue`, `app/layouts/policy.vue`)
+   - Uses Teleport to render directly to body
+   - Connected to global `useLoadingUI()` composable
+
+3. **Usage Pattern:**
+   ```typescript
+   // Loading is handled automatically
+   const { data, error } = await useNuxtPost<T>('endpoint', data);
+   // Loading automatically hidden after response
+   ```
+
+## Related Documents
+- Frontend Patterns (Nuxt 4): [`frontend-patterns.md`](./frontend-patterns.md)
+- Backend Patterns (NestJS): [`backend-patterns.md`](./backend-patterns.md)
+- API Communication Protocol: [`api-communication.md`](./api-communication.md)
+- Auth & Security Architecture: [`auth-security-architecture.md`](./auth-security-architecture.md)
+- Mobile Authentication: [`mobile-authentication.md`](./mobile-authentication.md)
+- (Optional) Port/Deployment Strategy: [`port-management.md`](./port-management.md)
+
