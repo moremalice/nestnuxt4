@@ -1,8 +1,5 @@
 // frontend/nuxt.config.ts
 
-const isProd = process.env.NUXT_PUBLIC_APP_ENV === 'production'
-const preview = process.env.NUXT_SITEMAP_PREVIEW === '1'
-
 export default defineNuxtConfig({
     srcDir: 'app',
     ssr: false,
@@ -58,7 +55,7 @@ export default defineNuxtConfig({
     site: {
         url: process.env.NUXT_SITE_URL!,
         name: 'Pikitalk',
-        indexable: isProd || preview
+        indexable: process.env.NUXT_PUBLIC_APP_ENV === 'production' || process.env.NUXT_SITEMAP_PREVIEW === '1'
     },
 
     sitemap: {
@@ -66,7 +63,6 @@ export default defineNuxtConfig({
         sitemaps: {
             'sitemap.xml': {
                 sources: ['/api/__sitemap__/urls'],
-                includeGlobalSources: false,
                 includeAppSources: false
             }
         }
@@ -144,7 +140,7 @@ export default defineNuxtConfig({
     ],
 
     // === Robots ===
-    robots: preview
+    robots: process.env.NUXT_SITEMAP_PREVIEW === '1'
         ? {
             groups: [{ userAgent: '*', disallow: [] }],
             sitemap: ['/sitemap.xml'],
@@ -154,11 +150,11 @@ export default defineNuxtConfig({
             groups: [
                 {
                     userAgent: '*',
-                    disallow: isProd ? [] : ['/']
+                    disallow: process.env.NUXT_PUBLIC_APP_ENV === 'production' ? [] : ['/']
                 }
             ],
             sitemap: ['/sitemap.xml'],
-            cacheControl: isProd
+            cacheControl: process.env.NUXT_PUBLIC_APP_ENV === 'production'
                 ? 'max-age=14400, must-revalidate'
                 : 'no-store'
           },
@@ -197,7 +193,6 @@ export default defineNuxtConfig({
 
     runtimeConfig: {
         // 서버 전용 (비공개)
-        NUXT_RECAPTCHA_SECRET_KEY: process.env.NUXT_RECAPTCHA_SECRET_KEY,
 
         // 클라이언트 노출 (공개)
         public: {
@@ -205,7 +200,6 @@ export default defineNuxtConfig({
             NUXT_API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3020',
             NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL,
             NUXT_RECAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY,
-            NUXT_RECAPTCHA_TEST_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_TEST_KEY,
         }
     }
 })
