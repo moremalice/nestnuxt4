@@ -1,3 +1,65 @@
+<script setup lang="ts">
+// 인증이 필요한 페이지 예시
+
+definePageMeta({
+  middleware: 'auth', // 인증 필수
+  title: '프로필',
+  description: '사용자 프로필 페이지'
+})
+
+// 인증 스토어 사용
+const authStore = useAuthStore()
+const router = useRouter()
+
+// 로컬 상태 (글로벌 로딩은 API 플러그인에서 처리됨)
+const isRefreshing = ref(false)
+
+// 유틸리티 함수
+const formatDate = (date: Date) => {
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+// 프로필 새로고침
+const refreshProfile = async () => {
+  isRefreshing.value = true
+  try {
+    // API 호출 시 글로벌 로딩이 자동으로 처리됨
+    await authStore.getProfile()
+  } catch (error) {
+    console.error('Profile refresh failed:', error)
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+// 로그아웃 처리
+const handleLogout = async () => {
+  try {
+    // API 호출 시 글로벌 로딩이 자동으로 처리됨
+    await authStore.logout()
+    await router.push('/login')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
+}
+
+// 페이지 로드 시 프로필 데이터 확인
+onMounted(async () => {
+  if (authStore.isAuthenticated && !authStore.currentUser) {
+    try {
+      // API 호출 시 글로벌 로딩이 자동으로 처리됨
+      await authStore.getProfile()
+    } catch (error) {
+      console.error('Failed to load profile:', error)
+    }
+  }
+})
+</script>
+
 <template>
   <div class="profile-container">
     <div class="profile-content">
@@ -81,73 +143,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-// ===============================================
-// 🔐 인증이 필요한 페이지 예시
-// ===============================================
-// 이 페이지는 로그인한 사용자만 접근할 수 있습니다.
-// definePageMeta의 middleware: 'auth-middleware'를 통해 인증을 강제합니다.
-
-// 페이지 메타데이터 - 인증 미들웨어 적용
-definePageMeta({
-  middleware: 'auth-middleware', // 🔑 이 한 줄이 인증을 필수로 만듭니다!
-  title: '프로필',
-  description: '사용자 프로필 페이지'
-})
-
-// 인증 스토어 사용
-const authStore = useAuthStore()
-const router = useRouter()
-
-// 로컬 상태 (글로벌 로딩은 API 플러그인에서 처리됨)
-const isRefreshing = ref(false)
-
-// 유틸리티 함수
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-// 프로필 새로고침
-const refreshProfile = async () => {
-  isRefreshing.value = true
-  try {
-    // API 호출 시 글로벌 로딩이 자동으로 처리됨
-    await authStore.getProfile()
-  } catch (error) {
-    console.error('Profile refresh failed:', error)
-  } finally {
-    isRefreshing.value = false
-  }
-}
-
-// 로그아웃 처리
-const handleLogout = async () => {
-  try {
-    // API 호출 시 글로벌 로딩이 자동으로 처리됨
-    await authStore.logout()
-    await router.push('/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  }
-}
-
-// 페이지 로드 시 프로필 데이터 확인
-onMounted(async () => {
-  if (authStore.isAuthenticated && !authStore.currentUser) {
-    try {
-      // API 호출 시 글로벌 로딩이 자동으로 처리됨
-      await authStore.getProfile()
-    } catch (error) {
-      console.error('Failed to load profile:', error)
-    }
-  }
-})
-</script>
 
 <style scoped>
 /* CSS 변수 정의 */

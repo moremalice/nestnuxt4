@@ -36,10 +36,11 @@ describe('Mobile Authentication (e2e)', () => {
     await app.close();
   });
 
-  describe('Mobile-specific endpoints', () => {
+  describe('Mobile client with X-Client-Type header', () => {
     it('should register a new user', async () => {
       const response = await request(app.getHttpServer())
         .post('/auth/register')
+        .set('X-Client-Type', 'mobile')
         .send(testUser)
         .expect(201);
 
@@ -50,9 +51,10 @@ describe('Mobile Authentication (e2e)', () => {
       });
     });
 
-    it('should login via mobile endpoint and return tokens in body', async () => {
+    it('should login with mobile header and return tokens in body', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/mobile/login')
+        .post('/auth/login')
+        .set('X-Client-Type', 'mobile')
         .send(testUser)
         .expect(200);
 
@@ -62,17 +64,18 @@ describe('Mobile Authentication (e2e)', () => {
         expect(data).toHaveProperty('user');
         expect(data.user.email).toBe(testUser.email);
       });
-      expectMobileClientResponse(response, false); // No CSRF skipped header for mobile-specific endpoint
-      
+      expectMobileClientResponse(response, true); // Should have CSRF skipped header
+
       accessToken = response.body.data.accessToken;
       refreshToken = response.body.data.refreshToken;
     });
 
-    it('should refresh tokens via mobile endpoint with Bearer token', async () => {
+    it('should refresh tokens with mobile header and Bearer token', async () => {
       expect(refreshToken).toBeDefined();
       const response = await request(app.getHttpServer())
-        .post('/auth/mobile/refresh')
+        .post('/auth/refresh')
         .set('Authorization', `Bearer ${refreshToken!}`)
+        .set('X-Client-Type', 'mobile')
         .expect(200);
 
       expectSuccessResponse<RefreshResponseData>(response.body, (data) => {
@@ -81,8 +84,8 @@ describe('Mobile Authentication (e2e)', () => {
         expect(typeof data.accessToken).toBe('string');
         expect(typeof data.refreshToken).toBe('string');
       });
-      expectMobileClientResponse(response, false); // No CSRF skipped header for mobile-specific endpoint
-      
+      expectMobileClientResponse(response, true); // Should have CSRF skipped header
+
       // Update tokens for subsequent tests
       accessToken = response.body.data.accessToken;
       refreshToken = response.body.data.refreshToken;
@@ -173,8 +176,9 @@ describe('Mobile Authentication (e2e)', () => {
   describe('Error handling', () => {
     it('should reject invalid refresh token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/mobile/refresh')
+        .post('/auth/refresh')
         .set('Authorization', 'Bearer invalid-token')
+        .set('X-Client-Type', 'mobile')
         .expect(401);
 
       expectErrorResponse(response.body, 'UnauthorizedException');

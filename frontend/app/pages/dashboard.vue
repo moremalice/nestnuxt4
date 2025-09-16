@@ -1,3 +1,83 @@
+<script setup lang="ts">
+// 🔐 인증이 필요한 대시보드 페이지 예시
+// 페이지 메타데이터 - 인증 미들웨어 적용
+definePageMeta({
+  middleware: 'auth', // 인증 필수 페이지로 설정
+  title: '대시보드',
+  description: '사용자 대시보드 페이지'
+})
+
+// 인증 스토어 및 라우터
+const authStore = useAuthStore()
+const router = useRouter()
+
+// 세션 시간 계산
+const sessionTime = ref('00:00')
+const startTime = Date.now()
+
+// 최근 활동 더미 데이터
+const recentActivities = ref([
+  { id: 1, action: '프로필을 업데이트했습니다', time: '5분 전' },
+  { id: 2, action: '로그인했습니다', time: '1시간 전' },
+  { id: 3, action: 'FAQ를 조회했습니다', time: '2시간 전' },
+  { id: 4, action: '공지사항을 확인했습니다', time: '1일 전' }
+])
+
+// 세션 시간 업데이트
+const updateSessionTime = () => {
+  const elapsed = Date.now() - startTime
+  const minutes = Math.floor(elapsed / 60000)
+  const seconds = Math.floor((elapsed % 60000) / 1000)
+  sessionTime.value = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
+// 토큰 새로고침
+const refreshTokens = async () => {
+  try {
+    // API 호출 시 글로벌 로딩이 자동으로 처리됨
+    const success = await authStore.refreshToken()
+    if (success) {
+      // 성공 피드백 (실제 프로젝트에서는 토스트 메시지 등 사용)
+      alert('토큰이 성공적으로 새로고침되었습니다!')
+    } else {
+      alert('토큰 새로고침에 실패했습니다.')
+    }
+  } catch (error) {
+    console.error('Token refresh failed:', error)
+    alert('토큰 새로고침 중 오류가 발생했습니다.')
+  }
+}
+
+// 로그아웃
+const handleLogout = async () => {
+  if (confirm('정말로 로그아웃하시겠습니까?')) {
+    try {
+      // API 호출 시 글로벌 로딩이 자동으로 처리됨
+      await authStore.logout()
+      await router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
+}
+
+// 생명주기 훅
+onMounted(() => {
+  // 세션 시간 업데이트 (1초마다)
+  const interval = setInterval(updateSessionTime, 1000)
+
+  onUnmounted(() => {
+    clearInterval(interval)
+  })
+
+  // 사용자 프로필이 없으면 가져오기
+  if (authStore.isAuthenticated && !authStore.currentUser) {
+    // API 호출 시 글로벌 로딩이 자동으로 처리됨
+    authStore.getProfile()
+  }
+})
+</script>
+
 <template>
   <div class="dashboard-container">
     <!-- 대시보드 헤더 -->
@@ -143,93 +223,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
-// ===============================================
-// 🔐 인증이 필요한 대시보드 페이지 예시
-// ===============================================
-// 이 페이지는 로그인한 사용자만 접근할 수 있습니다.
-// middleware: 'auth-middleware'를 통해 인증되지 않은 사용자는 로그인 페이지로 리다이렉트됩니다.
-
-// 페이지 메타데이터 - 인증 미들웨어 적용
-definePageMeta({
-  middleware: 'auth-middleware', // 🔑 인증 필수 페이지로 설정
-  title: '대시보드',
-  description: '사용자 대시보드 페이지'
-})
-
-// 인증 스토어 및 라우터
-const authStore = useAuthStore()
-const router = useRouter()
-
-// 세션 시간 계산
-const sessionTime = ref('00:00')
-const startTime = Date.now()
-
-// 최근 활동 더미 데이터
-const recentActivities = ref([
-  { id: 1, action: '프로필을 업데이트했습니다', time: '5분 전' },
-  { id: 2, action: '로그인했습니다', time: '1시간 전' },
-  { id: 3, action: 'FAQ를 조회했습니다', time: '2시간 전' },
-  { id: 4, action: '공지사항을 확인했습니다', time: '1일 전' }
-])
-
-// 세션 시간 업데이트
-const updateSessionTime = () => {
-  const elapsed = Date.now() - startTime
-  const minutes = Math.floor(elapsed / 60000)
-  const seconds = Math.floor((elapsed % 60000) / 1000)
-  sessionTime.value = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
-
-// 토큰 새로고침
-const refreshTokens = async () => {
-  try {
-    // API 호출 시 글로벌 로딩이 자동으로 처리됨
-    const success = await authStore.refreshToken()
-    if (success) {
-      // 성공 피드백 (실제 프로젝트에서는 토스트 메시지 등 사용)
-      alert('토큰이 성공적으로 새로고침되었습니다!')
-    } else {
-      alert('토큰 새로고침에 실패했습니다.')
-    }
-  } catch (error) {
-    console.error('Token refresh failed:', error)
-    alert('토큰 새로고침 중 오류가 발생했습니다.')
-  }
-}
-
-// 로그아웃
-const handleLogout = async () => {
-  if (confirm('정말로 로그아웃하시겠습니까?')) {
-    try {
-      // API 호출 시 글로벌 로딩이 자동으로 처리됨
-      await authStore.logout()
-      await router.push('/login')
-    } catch (error) {
-      console.error('Logout failed:', error)
-    }
-  }
-}
-
-// 생명주기 훅
-onMounted(() => {
-  // 세션 시간 업데이트 (1초마다)
-  const interval = setInterval(updateSessionTime, 1000)
-  
-  onUnmounted(() => {
-    clearInterval(interval)
-  })
-  
-  // 사용자 프로필이 없으면 가져오기
-  if (authStore.isAuthenticated && !authStore.currentUser) {
-    // API 호출 시 글로벌 로딩이 자동으로 처리됨
-    authStore.getProfile()
-  }
-})
-</script>
-
 <style scoped>
-/* CSS 변수 정의 */
 :root {
   --color-indigo-50: #eef2ff;
   --color-indigo-100: #e0e7ff;

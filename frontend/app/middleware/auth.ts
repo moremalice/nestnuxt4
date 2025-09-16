@@ -1,8 +1,6 @@
-// /frontend/middleware/auth.middleware.ts
-// ===============================================
-// 🔐 인증 미들웨어 (Authentication Middleware)
-// ===============================================
+// /frontend/app/middleware/auth.ts
 
+// 인증 미들웨어 (Authentication Middleware)
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const authStore = useAuthStore()
   const config = useRuntimeConfig()
