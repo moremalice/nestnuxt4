@@ -59,9 +59,8 @@ export const useServerApiGet = async <T = any>(url: string): Promise<ApiResponse
   }
 
   try {
-    const response = await $fetch<ApiResponse<T>>(url, {
+    const response = await $fetch<ApiResponse<T>>(`/api/nestjs${url}`, {
       method: 'GET',
-      baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL,
       headers: {
         'X-Server-Request': 'true',
         'X-Request-Source': 'nuxt-ssr'

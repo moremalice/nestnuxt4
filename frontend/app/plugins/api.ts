@@ -16,7 +16,7 @@ export interface ExtendedApi extends $Fetch {
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
-  // API 클라이언트 생성
+  // API 클라이언트 생성 (프록시 경유)
   const api = $fetch.create({
     baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL,
     credentials: 'include', // 쿠키 포함

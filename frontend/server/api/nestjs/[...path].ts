@@ -1,6 +1,6 @@
 // server/api/nestjs/[...path].ts
 /**
- * 간소화된 NestJS API 프록시 라우트
+ * NestJS API 프록시 라우트
  */
 
 export default defineEventHandler(async (event) => {
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   
   try {
     const config = useRuntimeConfig()
-    const nestApiUrl = config.public.NUXT_API_BASE_URL
+    const nestApiUrl = config.NEST_BACKEND_BASE_URL
     
     const response = await $fetch.raw(`${nestApiUrl}/${path}`, {
       method,

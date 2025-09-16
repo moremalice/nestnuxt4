@@ -165,9 +165,8 @@ export const useAuthStore = defineStore('auth', () => {
     isCsrfLoading.value = true
 
     try {
-      const response = await $fetch<CsrfApiResponse>('/csrf/token', {
+      const response = await $fetch<CsrfApiResponse>('/api/nestjs/csrf/token', {
         method: 'GET',
-        baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL,
         timeout: 10000,
         credentials: 'include'
       })
