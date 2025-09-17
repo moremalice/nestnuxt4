@@ -82,28 +82,96 @@ const handleLogin = async (formData: LoginData) => {
 
 ## Backend Response Processing
 
-### TransformInterceptor (Success)
-```typescript
-// All successful responses wrapped automatically
-return next.handle().pipe(
-  map((data) => ({
-    status: 'success',
-    data
-  }))
-)
-```
+### TransformInterceptor Implementation
 
-### HttpExceptionFilter (Error)
+**Location:** `src/common/interceptors/transform.interceptor.ts`
+
 ```typescript
-// All errors normalized to standard format
-const errorResponse = {
-  status: 'error',
-  data: {
-    name: exception.constructor.name,
-    message: userFriendlyMessage
+export interface SuccessResponse<T = any> {
+  status: 'success';
+  data: T;
+}
+
+@Injectable()
+export class TransformInterceptor<T> implements NestInterceptor<T, SuccessResponse<T>> {
+  constructor(private readonly configService: ConfigService) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<SuccessResponse<T>> {
+    return next.handle().pipe(
+      map((data) => ({
+        status: 'success',
+        data,
+      })),
+    );
   }
 }
-response.status(httpStatus).json(errorResponse)
+```
+
+### HttpExceptionFilter Implementation
+
+**Location:** `src/common/filters/http-exception.filter.ts`
+
+```typescript
+export interface ErrorResponse {
+  status: 'error';
+  data: ErrorData;
+}
+
+export interface ErrorData {
+  name: string;
+  message: string;
+}
+
+@Catch()
+export class HttpExceptionFilter implements ExceptionFilter {
+  constructor(private readonly configService: ConfigService) {}
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    const response = host.switchToHttp().getResponse<Response>();
+    const isDev = this.configService.get('NODE_ENV') !== 'production';
+
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
+    let exceptionName = 'InternalServerError';
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      exceptionName = exception.constructor.name;
+      const exceptionResponse = exception.getResponse();
+
+      // Handle different response types (string, object, validation arrays)
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else if (exceptionResponse && typeof exceptionResponse === 'object') {
+        const resObj = exceptionResponse as any;
+        const raw = resObj.message ?? resObj.error ?? message;
+
+        if (Array.isArray(raw)) {
+          message = raw.every((v) => typeof v === 'string')
+            ? raw.join(', ')
+            : 'Validation failed';
+        } else if (typeof raw === 'string') {
+          message = raw;
+        }
+      }
+    }
+
+    // Hide internal errors in production
+    if (!isDev && status >= 500) {
+      message = 'Internal server error';
+    }
+
+    const errorResponse: ErrorResponse = {
+      status: 'error',
+      data: {
+        name: exceptionName,
+        message: message,
+      },
+    };
+
+    response.status(status).json(errorResponse);
+  }
+}
 ```
 
 ### Controller Implementation

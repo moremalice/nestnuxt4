@@ -9,7 +9,7 @@
 - **API Communication:** `api-communication.md`
 
 ## Backend
-- **Patterns (NestJS):** `backend-patterns.md`
+- **Patterns (NestJS):** `backend-patterns.md` - Core NestJS patterns, configuration, and module structure
 
 ## Development & Deploy
 - **Development Setup:** `development-setup.md`

@@ -344,6 +344,140 @@ console.log('Refresh Success:', success)
 
 ---
 
+## Advanced Security Patterns
+
+### reCAPTCHA Integration
+
+**Optional reCAPTCHA Validation:**
+```typescript
+// Implementation: src/module/auth/auth.controller.ts:30
+@OptionalRecaptcha({ action: 'register' })
+@UseGuards(RecaptchaGuard, ProxyAwareThrottlerGuard)
+async register(@Body() registerDto: RegisterDto) {
+  // reCAPTCHA result automatically attached to request
+  return await this.authService.register(registerDto);
+}
+```
+
+**Standalone reCAPTCHA Validation:**
+```typescript
+// Implementation: src/module/auth/strategies/recaptcha.strategy.ts
+const recaptchaStrategy = new RecaptchaStrategy(this.configService);
+const result = await recaptchaStrategy.validate(
+  recaptchaToken,
+  clientIP,
+  expectedAction
+);
+```
+
+### Smart CSRF Protection
+
+**Intelligent CSRF with Fail-Open Mode:**
+```typescript
+// Implementation: src/module/security/csrf.service.ts
+shouldSkipCsrf(req: Request): boolean {
+  const clientType = determineClientType(req);
+
+  // Mobile clients automatically skip CSRF
+  if (clientType === ClientType.MOBILE) {
+    return true;
+  }
+
+  // Special endpoints can skip CSRF
+  if (req.path === '/auth/validate-recaptcha') {
+    return true;
+  }
+
+  return false;
+}
+```
+
+**Graceful Degradation:**
+```typescript
+// Fail-open configuration prevents service interruption
+this.failOpen = String(this.config.get('CSRF_STRICT') ?? 'false') !== 'true';
+
+if (!this.failOpen && csrfInitializationFails) {
+  throw new Error(`CSRF initialization failed (strict mode)`);
+}
+```
+
+### Proxy-Aware Rate Limiting
+
+**Real IP Extraction:**
+```typescript
+// Implementation: src/common/guards/proxy-aware-throttler.guard.ts
+protected getTracker(req: Record<string, any>): string {
+  // Priority order for IP extraction in proxy environments
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const realIP = req.headers['x-real-ip'];
+  const connectingIP = req.headers['x-connecting-ip'];
+
+  const clientIP = forwardedFor?.split(',')[0]?.trim() ||
+                   realIP ||
+                   connectingIP ||
+                   req.ip ||
+                   'unknown';
+
+  return clientIP;
+}
+```
+
+**Endpoint-Specific Throttling:**
+```typescript
+// Different limits per endpoint type
+@Throttle({ login: { ttl: 60000, limit: 10 } })      // 10/min for login
+@Throttle({ register: { ttl: 60000, limit: 5 } })    // 5/min for register
+@Throttle({ refresh: { ttl: 60000, limit: 20 } })    // 20/min for refresh
+```
+
+### Client Type Detection
+
+**Unified Client Detection:**
+```typescript
+// Implementation: src/module/auth/decorators/client-type.decorator.ts
+export function determineClientType(req: Request): ClientType {
+  // 1. Check explicit header (highest priority)
+  const clientTypeHeader = req.headers['x-client-type']?.toString().toLowerCase();
+  if (clientTypeHeader === 'mobile') return ClientType.MOBILE;
+  if (clientTypeHeader === 'web') return ClientType.WEB;
+
+  // 2. Check User-Agent patterns
+  const userAgent = req.headers['user-agent']?.toLowerCase() || '';
+  const mobilePatterns = [
+    'react-native', 'flutter', 'dart', 'okhttp',
+    'mobile', 'android', 'iphone', 'ipad'
+  ];
+
+  if (mobilePatterns.some(pattern => userAgent.includes(pattern))) {
+    return ClientType.MOBILE;
+  }
+
+  // 3. Default to web
+  return ClientType.WEB;
+}
+```
+
+**Client-Specific Security Policies:**
+```typescript
+// Different token handling per client type
+if (clientType === ClientType.MOBILE) {
+  return {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken, // Mobile gets both tokens
+    user: result.user,
+  };
+}
+
+// Web client: refresh token in HttpOnly cookie
+response.cookie('refreshToken', result.refreshToken, {
+  httpOnly: true,
+  sameSite: 'strict'
+});
+```
+
+---
+
 ## Related Documents
 
 - [Mobile Authentication Guide](./mobile-authentication.md) - Mobile app-specific authentication setup

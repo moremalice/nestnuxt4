@@ -16,7 +16,7 @@
 ## Standards
 - **File Naming**: kebab-case files, PascalCase components (+Component suffix)
 - **TypeScript**: Explicit returns, no `any`, strict mode, Interface > Type
-- **Documentation**: See docs/CONTRIBUTING.md for comprehensive documentation standards
+- **Documentation**: **MANDATORY** — All docs/ file creation/modification MUST follow docs/CONTRIBUTING.md guidelines (DRY principle, cross-linking, English language, change checklist)
 
 ## Architecture Summary
 - **Auth**: Web (HttpOnly cookies + CSRF), Mobile (Bearer tokens)
@@ -43,3 +43,4 @@
 - **Bugfix**: Symptom + repro → root cause + fix
 - **Tests**: Target module → test file + run command
 - **Migration**: Current → desired → incremental diffs
+- **Documentation**: Read docs/CONTRIBUTING.md FIRST → Apply DRY + cross-linking + English + checklist
