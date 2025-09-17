@@ -43,7 +43,7 @@ export const exampleConfigs = {
 ### Database Configuration Pattern
 
 ```typescript
-// src/config/database.config.ts
+// src/config/database.config.ts - Multi-database setup
 export const databaseConfigs = {
   world: {
     name: 'piki_world_db',
@@ -54,16 +54,48 @@ export const databaseConfigs = {
       username: configService.get<string>('DB_WORLD_USERNAME'),
       password: configService.get<string>('DB_WORLD_PASSWORD'),
       database: configService.get<string>('DB_WORLD_DATABASE'),
-      // Environment-specific settings
-      logging: configService.get<boolean>('DB_WORLD_DEV', false),
       synchronize: false,
       namingStrategy: new SnakeNamingStrategy(),
       entities: [join(__dirname, '..', '**/*.entity{.ts,.js}')],
       timezone: '+09:00',
       charset: 'utf8mb4',
+      logging: configService.get<boolean>('DB_WORLD_DEV', false),
     }),
   },
-  // place and test configurations follow same pattern
+  place: {
+    name: 'piki_place_db',
+    factory: (configService: ConfigService): TypeOrmModuleOptions => ({
+      type: 'mysql',
+      host: configService.get<string>('DB_PLACE_HOST'),
+      port: configService.get<number>('DB_PLACE_PORT', 13306), // Different port
+      username: configService.get<string>('DB_PLACE_USERNAME'),
+      password: configService.get<string>('DB_PLACE_PASSWORD'),
+      database: configService.get<string>('DB_PLACE_DATABASE'),
+      synchronize: false,
+      namingStrategy: new SnakeNamingStrategy(),
+      entities: [join(__dirname, '..', '**/*.entity{.ts,.js}')],
+      timezone: '+09:00',
+      charset: 'utf8mb4',
+      logging: configService.get<boolean>('DB_PLACE_DEV', false),
+    }),
+  },
+  test: {
+    name: 'test_user_db',
+    factory: (configService: ConfigService): TypeOrmModuleOptions => ({
+      type: 'mysql',
+      host: configService.get<string>('DB_TEST_USER_HOST'),
+      port: configService.get<number>('DB_TEST_USER_PORT', 13306),
+      username: configService.get<string>('DB_TEST_USER_USERNAME'),
+      password: configService.get<string>('DB_TEST_USER_PASSWORD'),
+      database: configService.get<string>('DB_TEST_USER_DATABASE'),
+      synchronize: false,
+      namingStrategy: new SnakeNamingStrategy(),
+      entities: [join(__dirname, '..', '**/*.entity{.ts,.js}')],
+      timezone: '+09:00',
+      charset: 'utf8mb4',
+      logging: configService.get<boolean>('DB_TEST_USER_DEV', false),
+    }),
+  },
 };
 ```
 
@@ -118,7 +150,7 @@ export class ExampleService {
 
 ### Global Response Interceptor
 
-The backend uses `TransformInterceptor` to ensure all API responses follow a consistent format:
+The backend uses `TransformInterceptor` to ensure all API responses follow a consistent format. For complete API communication patterns, see [API Communication Architecture](./api-communication.md).
 
 ```typescript
 // backend/src/common/interceptors/transform.interceptor.ts
@@ -249,124 +281,286 @@ export class ExampleDto {
 
 ## Response Standardization Pattern
 
-### TransformInterceptor
+For detailed response transformation and API communication patterns, see [API Communication Architecture](./api-communication.md).
 
-The application uses a global `TransformInterceptor` that automatically wraps all successful responses in a standard format:
+### Key Response Principles
+
+- **Automatic Wrapping**: All successful responses use `{ status: 'success', data: T }` format
+- **Error Consistency**: Errors follow `{ status: 'error', data: { name, message } }` format
+- **Passthrough Usage**: Only use `@Res({ passthrough: true })` for cookie/header manipulation
+- **No Direct Response**: Avoid direct `response.json()` calls to maintain interceptor benefits
+
+## Controller Pattern
+
+Real-world controller implementation with comprehensive security features:
 
 ```typescript
-// All controller responses are automatically transformed:
-// Raw return: { id: 1, name: "John" }
-// Becomes: { status: "success", data: { id: 1, name: "John" } }
-```
+@Controller('auth')
+@ApiTags('AUTH')
+export class AuthController {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
-**Standard Response Format:**
-```typescript
-// Success Response
-interface SuccessResponse<T> {
-  status: 'success'
-  data: T
-}
+  @Post('register')
+  @UseGuards(RecaptchaGuard, ProxyAwareThrottlerGuard)
+  @OptionalRecaptcha({ action: 'register' })
+  @Throttle({ register: { ttl: 60000, limit: 5 } })
+  @ApiOperation({
+    summary: '회원가입',
+    description: '웹: CSRF Token 필수 | 모바일: X-Client-Type: mobile | reCAPTCHA: 선택적 검증'
+  })
+  @ApiResponse({ status: 201, type: RegisterResponseDto })
+  @ApiResponse({ status: 409, description: '이미 존재하는 이메일' })
+  @ApiResponse({ status: 403, description: 'CSRF Token 오류 (웹 전용)' })
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Req() request: Request & { recaptchaResult?: any }
+  ): Promise<RegisterResponseDto> {
+    const result = await this.authService.register(registerDto);
+    return {
+      idx: result.user.idx,
+      email: result.user.email,
+    };
+  }
 
-// Error Response (from HttpExceptionFilter)
-interface ErrorResponse {
-  status: 'error'
-  data: {
-    name: string    // Exception class name
-    message: string // Localized error message
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProxyAwareThrottlerGuard)
+  @Throttle({ login: { ttl: 60000, limit: 10 } })
+  @ApiHeader({
+    name: 'X-Client-Type',
+    description: '클라이언트 타입',
+    required: false,
+    enum: ['mobile', 'web'],
+  })
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+    @GetClientType() clientType: ClientType,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.login(loginDto, clientType);
+
+    // Client-specific token handling
+    if (clientType === ClientType.MOBILE) {
+      return {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user,
+      };
+    }
+
+    // Web client: refresh token in HttpOnly cookie
+    const cookieOptions = this.authService.getRefreshTokenCookieOptions(clientType);
+    const refreshCookieName = getRefreshCookieName(this.configService);
+    response.cookie(refreshCookieName, result.refreshToken, cookieOptions);
+
+    return {
+      accessToken: result.accessToken,
+      user: result.user,
+    };
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard, ProxyAwareThrottlerGuard)
+  @Throttle({ profile: { ttl: 60000, limit: 100 } })
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+  @ApiBearerAuth('access-token')
+  getProfile(@Req() request: AuthenticatedRequest): { user: ProfileResponseDto } {
+    const { password: _, ...userProfile } = request.user;
+    return { user: userProfile };
   }
 }
 ```
 
-### When to Use @Res({ passthrough: true })
+**Key Controller Patterns:**
+- **Multi-Guard Strategy**: RecaptchaGuard + ProxyAwareThrottlerGuard combination
+- **Client-Specific Logic**: Different response formats for web/mobile
+- **Passthrough Response**: Use `@Res({ passthrough: true })` only for cookie manipulation
+- **Comprehensive API Documentation**: Swagger decorators with client-specific descriptions
 
-**Standard Practice:** Let interceptor handle response formatting
+For authentication implementation details, see [Authentication & Security Architecture](./auth-security-architecture.md).
+
+## Security Patterns
+
+### reCAPTCHA Integration Pattern
+
+The backend supports optional reCAPTCHA validation with strategic integration:
+
 ```typescript
-@Get('/standard')
-async getStandard() {
-  return { message: 'Hello World' };
-  // Becomes: { status: 'success', data: { message: 'Hello World' } }
+// Optional reCAPTCHA decorator
+@OptionalRecaptcha({ action: 'register' })
+@UseGuards(RecaptchaGuard, ProxyAwareThrottlerGuard)
+async register(
+  @Body() registerDto: RegisterDto,
+  @Req() request: Request & { recaptchaResult?: any }
+): Promise<RegisterResponseDto> {
+  // reCAPTCHA result is automatically attached to request
+  const recaptchaResult = request.recaptchaResult;
+  return await this.authService.register(registerDto);
 }
 ```
 
-**Use Passthrough Only When Setting Cookies/Headers:**
+**reCAPTCHA Strategy Pattern:**
 ```typescript
-@Post('/login')
+// Direct strategy usage for standalone validation
+const { RecaptchaStrategy } = await import('./strategies/recaptcha.strategy');
+const recaptchaStrategy = new RecaptchaStrategy(this.configService);
+
+const result = await recaptchaStrategy.validate(
+  recaptchaToken,
+  clientIP,
+  expectedAction
+);
+```
+
+### Smart CSRF Protection Pattern
+
+Intelligent CSRF protection with fail-open mode and client detection:
+
+```typescript
+// CSRF Service with automatic mobile detection
+@Injectable()
+export class CsrfService {
+  shouldSkipCsrf(req: Request): boolean {
+    const clientType = determineClientType(req);
+
+    // Mobile clients automatically skip CSRF
+    if (clientType === ClientType.MOBILE) {
+      return true;
+    }
+
+    // Special endpoints can skip CSRF
+    if (req.path === '/auth/validate-recaptcha') {
+      return true;
+    }
+
+    return false;
+  }
+}
+```
+
+**Fail-Open Configuration:**
+```typescript
+// CSRF initialization with graceful degradation
+private initializeCsrf() {
+  this.failOpen = String(this.config.get('CSRF_STRICT') ?? 'false') !== 'true';
+
+  try {
+    this.csrfUtils = doubleCsrf({
+      getSecret: () => this.getCsrfSecret(),
+      ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+      // Production vs development cookie settings
+      cookieName: isProd ? '__Host-csrf-token' : 'csrf-token',
+    });
+  } catch (error) {
+    if (!this.failOpen) {
+      throw new Error(`CSRF initialization failed (strict mode)`);
+    }
+    console.warn('⚠️ CSRF protection disabled (fail-open mode)');
+  }
+}
+```
+
+### Proxy-Aware Rate Limiting Pattern
+
+Rate limiting that correctly handles proxy environments:
+
+```typescript
+// Custom throttler guard for proxy environments
+@Injectable()
+export class ProxyAwareThrottlerGuard extends ThrottlerGuard {
+  protected getTracker(req: Record<string, any>): string {
+    // Extract real IP from various proxy headers
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const realIP = req.headers['x-real-ip'];
+    const connectingIP = req.headers['x-connecting-ip'];
+
+    // Priority order for IP extraction
+    const clientIP = forwardedFor?.split(',')[0]?.trim() ||
+                     realIP ||
+                     connectingIP ||
+                     req.ip ||
+                     req.connection?.remoteAddress ||
+                     'unknown';
+
+    return clientIP;
+  }
+}
+```
+
+**Endpoint-Specific Throttling:**
+```typescript
+@Controller('auth')
+export class AuthController {
+  @UseGuards(ProxyAwareThrottlerGuard)
+  @Throttle({ login: { ttl: 60000, limit: 10 } })        // 10/min for login
+  @Throttle({ register: { ttl: 60000, limit: 5 } })      // 5/min for register
+  @Throttle({ refresh: { ttl: 60000, limit: 20 } })      // 20/min for refresh
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
+  }
+}
+```
+
+### Client Type Detection Pattern
+
+Unified client type detection across the application:
+
+```typescript
+// Centralized client type determination
+export function determineClientType(req: Request): ClientType {
+  // 1. Check explicit header (highest priority)
+  const clientTypeHeader = req.headers['x-client-type']?.toString().toLowerCase();
+  if (clientTypeHeader === 'mobile') return ClientType.MOBILE;
+  if (clientTypeHeader === 'web') return ClientType.WEB;
+
+  // 2. Check User-Agent patterns
+  const userAgent = req.headers['user-agent']?.toLowerCase() || '';
+  const mobilePatterns = [
+    'react-native', 'flutter', 'dart', 'okhttp',
+    'mobile', 'android', 'iphone', 'ipad'
+  ];
+
+  if (mobilePatterns.some(pattern => userAgent.includes(pattern))) {
+    return ClientType.MOBILE;
+  }
+
+  // 3. Default to web
+  return ClientType.WEB;
+}
+```
+
+**Controller Usage:**
+```typescript
+@Post('login')
 async login(
   @Body() loginDto: LoginDto,
+  @GetClientType() clientType: ClientType,
   @Res({ passthrough: true }) response: Response,
 ): Promise<AuthResponseDto> {
-  const result = await this.authService.login(loginDto);
-  
-  // Set refresh token cookie
+  const result = await this.authService.login(loginDto, clientType);
+
+  // Client-specific token handling
+  if (clientType === ClientType.MOBILE) {
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken, // Mobile gets both tokens
+      user: result.user,
+    };
+  }
+
+  // Web client: refresh token in HttpOnly cookie
   response.cookie('refreshToken', result.refreshToken, {
     httpOnly: true,
     sameSite: 'strict'
   });
-  
-  // Return data - interceptor will wrap it
+
   return {
     accessToken: result.accessToken,
-    user: result.user
+    user: result.user,
   };
-  // Final response: { status: 'success', data: { accessToken: "...", user: {...} } }
-}
-```
-
-**Avoid Direct Response Manipulation:**
-```typescript
-// ❌ Don't do this - bypasses interceptor
-@Get('/bad-example')
-async badExample(@Res() response: Response) {
-  response.json({ message: 'Hello' }); // No standard format
-}
-
-// ✅ Do this instead
-@Get('/good-example')
-async goodExample() {
-  return { message: 'Hello' }; // Interceptor wraps automatically
-}
-```
-
-## Controller Pattern
-
-```typescript
-@Controller('example')
-@ApiTags('WEB')
-export class ExampleController {
-  constructor(private readonly exampleService: ExampleService) {}
-
-  @Get()
-  @ApiOperation({ summary: 'Get example list' })
-  @ApiResponse({ status: 200, description: 'Success' })
-  async getExampleList(@Query() query: ExampleDto) {
-    return this.exampleService.getExampleList(query);
-    // Interceptor automatically wraps in standard format
-  }
-
-  @Post()
-  @ApiSecurity('csrf-token')  // Required for mutations
-  @ApiOperation({ summary: 'Create example' })
-  async createExample(@Body() body: CreateExampleDto) {
-    return this.exampleService.createExample(body);
-    // Interceptor automatically wraps in standard format
-  }
-
-  @Post('/with-cookie')
-  @ApiOperation({ summary: 'Example with cookie setting' })
-  async exampleWithCookie(
-    @Body() body: CreateExampleDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const result = await this.exampleService.createExample(body);
-    
-    // Set custom cookie
-    response.cookie('example-session', result.sessionId, {
-      httpOnly: true,
-      maxAge: 3600000
-    });
-    
-    return result; // Still gets wrapped by interceptor
-  }
 }
 ```
 
@@ -483,8 +677,10 @@ throw new ForbiddenException(
 5. **Fallback**: Always provide English translations as fallback
 
 ## Related Documents
-- Auth & Security Architecture: [`auth-security-architecture.md`](./auth-security-architecture.md)
-- API Communication Protocol: [`api-communication.md`](./api-communication.md)
-- Frontend Patterns (Nuxt 4): [`frontend-patterns.md`](./frontend-patterns.md)
-- Development Environment: [`development-setup.md`](./development-setup.md)
+
+- [Authentication & Security Architecture](./auth-security-architecture.md) - Complete JWT/CSRF authentication system
+- [API Communication Architecture](./api-communication.md) - API communication patterns and proxy implementation
+- [Frontend Patterns (Nuxt 4)](./frontend-patterns.md) - Nuxt 4 development patterns and composables
+- [Mobile Authentication Guide](./mobile-authentication.md) - Mobile app-specific authentication setup
+- [Development Setup](./development-setup.md) - Environment configuration and setup guide
 

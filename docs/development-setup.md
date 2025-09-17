@@ -69,6 +69,9 @@ DB_TEST_USER_DEV=false
 - `test_user_db`: Test environment data
 
 #### Security Configuration
+
+For complete security architecture and implementation details, see [Authentication & Security Architecture](./auth-security-architecture.md).
+
 ```bash
 # CSRF Protection
 CSRF_SECRET=environment-specific-secret-key
@@ -152,7 +155,7 @@ const { public: { apiBase, appEnv } } = useRuntimeConfig();
 
 ### ConfigService Pattern Implementation
 
-The backend uses `@nestjs/config` with factory pattern for type-safe environment variable access:
+The backend uses `@nestjs/config` with factory pattern for type-safe environment variable access. For complete backend implementation patterns, see [Backend Patterns (NestJS)](./backend-patterns.md):
 
 ```typescript
 // All configurations use ConfigService injection pattern
@@ -166,11 +169,7 @@ export const exampleConfig = {
 ```
 
 **Automatic API Integration:**
-The frontend automatically connects to the backend through the API plugin (`plugins/api.ts`) which:
-- Auto-manages loading states for all API calls
-- Handles JWT token injection and refresh
-- Manages CSRF token generation and validation
-- Uses runtime config for dynamic API base URL selection
+The frontend automatically connects to the backend through the API plugin. For complete API communication patterns and implementation details, see [API Communication Architecture](./api-communication.md) and [Frontend Patterns](./frontend-patterns.md).
 
 ## Quick Start Commands
 
@@ -238,7 +237,7 @@ cd frontend && npm run local
 ### Server Termination
 **Graceful shutdown:** Use `Ctrl+C` in each terminal
 
-**Force cleanup:** See **[docs/port-management.md](docs/port-management.md)** for detailed port cleanup commands and troubleshooting.
+**Force cleanup:** If ports remain occupied or services don't shut down properly, see [Port Management & Deployment](./port-management.md) for detailed port cleanup commands and troubleshooting.
 
 ## API Testing During Development
 
@@ -276,7 +275,9 @@ find . -maxdepth 2 -name "*test*.txt" -delete
 - **Swagger** - API documentation (available at `/api` in development)
 - **Jest** - Testing framework with e2e support
 
-### Frontend Stack  
+For detailed backend architecture and patterns, see [Backend Patterns (NestJS)](./backend-patterns.md).
+
+### Frontend Stack
 - **Nuxt.js 4.1.1** - Vue.js framework with new app/ directory structure and enhanced performance
 - **Vue 3.5.21** - Frontend framework with Composition API and latest optimizations
 - **Pinia 3.0.3** - State management with readonly pattern and improved TypeScript support
@@ -285,33 +286,18 @@ find . -maxdepth 2 -name "*test*.txt" -delete
 - **Swiper** - Touch slider component with custom wrapper
 - **Auto-Loading System** - Automatic loading states via API plugin
 
+For detailed frontend architecture and patterns, see [Frontend Patterns (Nuxt 4)](./frontend-patterns.md).
+
 ## Automatic Loading Management
 
-**Frontend Loading System:**
-The application features automatic loading state management:
-
-1. **API Plugin Integration** (`app/plugins/api.ts`):
-   - Automatically shows loading on request start
-   - Automatically hides loading on response/error
-   - No manual loading state management required
-
-2. **LoadingComponent** (`app/components/common/LoadingComponent.vue`):
-   - Integrated in all layouts (`app/layouts/default.vue`, `app/layouts/policy.vue`)
-   - Uses Teleport to render directly to body
-   - Connected to global `useLoadingUI()` composable
-
-3. **Usage Pattern:**
-   ```typescript
-   // Loading is handled automatically
-   const { data, error } = await useNuxtPost<T>('endpoint', data);
-   // Loading automatically hidden after response
-   ```
+The application features automatic loading state management through the API plugin and global loading components. For complete implementation details and usage patterns, see [Frontend Patterns](./frontend-patterns.md#automatic-loading-ui-system).
 
 ## Related Documents
-- Frontend Patterns (Nuxt 4): [`frontend-patterns.md`](./frontend-patterns.md)
-- Backend Patterns (NestJS): [`backend-patterns.md`](./backend-patterns.md)
-- API Communication Protocol: [`api-communication.md`](./api-communication.md)
-- Auth & Security Architecture: [`auth-security-architecture.md`](./auth-security-architecture.md)
-- Mobile Authentication: [`mobile-authentication.md`](./mobile-authentication.md)
-- (Optional) Port/Deployment Strategy: [`port-management.md`](./port-management.md)
+
+- [Frontend Patterns (Nuxt 4)](./frontend-patterns.md) - Nuxt 4 development patterns, API composables, and component architecture
+- [Backend Patterns (NestJS)](./backend-patterns.md) - NestJS development patterns, modular architecture, and best practices
+- [API Communication Architecture](./api-communication.md) - API communication patterns, proxy implementation, and response formats
+- [Authentication & Security Architecture](./auth-security-architecture.md) - Complete JWT/CSRF authentication system and security implementation
+- [Mobile Authentication Guide](./mobile-authentication.md) - Mobile app-specific authentication setup and Bearer token management
+- [Port Management & Deployment](./port-management.md) - Port cleanup commands, deployment strategies, and troubleshooting
 

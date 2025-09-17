@@ -4,6 +4,8 @@
 
 ### Security Pattern: Server Handler vs Client Plugin
 
+For complete security architecture details, see [Authentication & Security Architecture](./auth-security-architecture.md).
+
 **Server Handler (Private Backend Access):**
 ```typescript
 // server/api/nestjs/[...path].ts
@@ -37,67 +39,14 @@ const api = $fetch.create({
 
 ### API Plugin Configuration (`app/plugins/api.ts`)
 
-The frontend uses a centralized API plugin that automatically handles loading states, authentication, and CSRF protection:
+The frontend uses a centralized API plugin that automatically handles loading states, authentication, and CSRF protection. For complete API communication patterns, see [API Communication Architecture](./api-communication.md).
 
-```typescript
-// app/plugins/api.ts
-export default defineNuxtPlugin((nuxtApp) => {
-  const api = $fetch.create({
-    baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL, // Proxy path: /api/nestjs
-    credentials: 'include',
-    timeout: 30000,
-
-    // Automatic loading management
-    onRequest: async ({ options }) => {
-      const { showLoading } = useLoadingUI()
-      showLoading() // Auto-show loading on every request
-
-      // Auto-inject JWT token
-      const authStore = useAuthStore()
-      const { token } = storeToRefs(authStore)
-      if (token.value) {
-        headers.set('Authorization', `Bearer ${token.value}`)
-      }
-
-      // Auto-inject CSRF token for mutations (Auth Store based)
-      const method = (options.method || 'GET').toUpperCase()
-      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-        const authStore = useAuthStore()
-        const csrfToken = await authStore.getCsrfToken()
-        if (csrfToken) {
-          headers.set('X-CSRF-Token', csrfToken)
-        }
-      }
-    },
-
-    onResponse: () => {
-      const { hideLoading } = useLoadingUI()
-      hideLoading() // Auto-hide loading on success
-    },
-
-    onResponseError: async ({ response, options, error }) => {
-      const { hideLoading } = useLoadingUI()
-      hideLoading() // Auto-hide loading on error
-
-      // Auto-retry with token refresh on 401
-      if (response?.status === 401) {
-        const authStore = useAuthStore()
-        const refreshSuccess = await authStore.refreshToken()
-
-        if (refreshSuccess) {
-          // Retry request with new token
-          return await apiInstance(request, {
-            ...options,
-            context: { skipTokenRefresh: true }
-          })
-        }
-      }
-    }
-  })
-
-  return { provide: { api } }
-})
-```
+**Key Features:**
+- **Auto Loading Management**: Global loading UI control
+- **JWT Token Injection**: Automatic Bearer token attachment
+- **CSRF Protection**: Auto CSRF token for mutations
+- **401 Auto-Retry**: Transparent token refresh and request retry
+- **Proxy Security**: All requests go through `/api/nestjs/*` proxy
 
 ### Automatic Loading UI System
 
@@ -164,43 +113,101 @@ const { isLoading } = useLoadingUI()
 
 ### API Composable (`app/composables/api/useNuxtApi.ts`)
 
+Updated implementation with advanced loading management and authentication:
+
 ```typescript
-// app/composables/api/useNuxtApi.ts
-// ApiResponse type is typically defined inline where needed
+// app/composables/api/useNuxtApi.ts - Current implementation
+interface SimpleApiOptions {
+  body?: any
+  query?: any
+  context?: ApiContextFlags
+  server?: boolean
+}
 
 export const useNuxtApi = async <T = any>(
   endpoint: string,
   options: SimpleApiOptions = {}
 ) => {
-  const { body, ...otherOptions } = options
+  const {
+    body,
+    query,
+    context = {},
+    server = true
+  } = options
 
-  return await useFetch<ApiResponse<T>>(`/api/nestjs/${endpoint}`, {
+  const config = useRuntimeConfig()
+  const apiBasePath = config.public.NUXT_API_BASE_URL
+
+  const { showLoading, hideLoading } = useLoadingUI()
+  const authStore = useAuthStore()
+  const { token } = storeToRefs(authStore)
+
+  const result = await useFetch<ApiResponse<T>>(`${apiBasePath}/${endpoint}`, {
     method: body ? 'POST' : 'GET',
     body,
-    ...otherOptions
+    query,
+    server,
+
+    onRequest: async ({ options }) => {
+      if (!import.meta.server) showLoading?.()
+
+      const headers = new Headers()
+
+      // JWT token injection
+      if (token.value) {
+        headers.set('Authorization', `Bearer ${token.value}`)
+      }
+
+      // CSRF token injection (POST requests only)
+      if (body && !context.skipCsrf) {
+        try {
+          const csrfToken = await authStore.getCsrfToken()
+          if (csrfToken) {
+            headers.set('X-CSRF-Token', csrfToken)
+          }
+        } catch (e) {
+          console.warn('CSRF token failed:', e)
+        }
+      }
+
+      options.headers = headers
+    },
+
+    onResponse: () => {
+      if (!import.meta.server) hideLoading?.()
+    },
+
+    onResponseError: async ({ response }) => {
+      if (!import.meta.server) hideLoading?.()
+
+      // Auto token refresh on 401
+      if (response?.status === 401 && !context.skipTokenRefresh) {
+        try {
+          await authStore.refreshToken()
+        } catch (e) {
+          console.error('Token refresh failed:', e)
+        }
+      }
+    }
   })
+
+  return result
 }
 
-export const useNuxtGet = async <T = any>(
+export const useNuxtGet = <T = any>(
   endpoint: string,
-  query?: Record<string, any>
+  query?: any,
+  options: Omit<SimpleApiOptions, 'body' | 'query'> = {}
 ) => {
-  return await useFetch<ApiResponse<T>>(`/api/nestjs/${endpoint}`, {
-    method: 'GET',
-    query
-  })
+  return useNuxtApi<T>(endpoint, { ...options, query })
 }
 
-export const useNuxtPost = async <T = any>(
+export const useNuxtPost = <T = any>(
   endpoint: string,
-  body?: Record<string, any>,
-  options: SimpleApiOptions = {}
+  body?: any,
+  options: Omit<SimpleApiOptions, 'body'> = {}
 ) => {
-  return await useFetch<ApiResponse<T>>(`/api/nestjs/${endpoint}`, {
-    method: 'POST',
-    body,
-    ...options
-  })
+  return useNuxtApi<T>(endpoint, { ...options, body })
 }
 ```
 
@@ -230,50 +237,13 @@ if (!error.value && data.value?.status === 'success') {
 
 ## CSRF Protection Integration
 
-### Auth Store Integration (`app/stores/auth.ts`)
+For comprehensive authentication patterns, see [Authentication & Security Architecture](./auth-security-architecture.md).
 
-```typescript
-// stores/auth.ts
-export const useAuthStore = defineStore('auth', () => {
-  const csrfToken = ref<string | null>(null)
-  const csrfExpiresAt = ref<number | null>(null)
-
-  const getCsrfToken = async (): Promise<string | null> => {
-    // Check if we have a valid token
-    if (csrfToken.value && csrfExpiresAt.value && Date.now() < csrfExpiresAt.value) {
-      return csrfToken.value
-    }
-
-    try {
-      // Fetch new CSRF token
-      const response = await $fetch<CsrfResponse>('/csrf/token', {
-        credentials: 'include'
-      })
-
-      if (response.status === 'success') {
-        csrfToken.value = response.data.token
-        csrfExpiresAt.value = Date.now() + (10 * 60 * 1000) // 10 minutes
-        return csrfToken.value
-      }
-    } catch (error) {
-      console.error('Failed to fetch CSRF token:', error)
-    }
-
-    return null
-  }
-
-  return {
-    csrfToken: readonly(csrfToken),
-    getCsrfToken
-  }
-})
-```
-
-### Automatic CSRF Usage
-```typescript
-// CSRF token automatically injected for POST requests
-const { data, error } = await useNuxtPost('auth/logout', {}) // CSRF auto-injected via Auth Store
-```
+**Key CSRF Features:**
+- **Automatic Injection**: CSRF tokens automatically added to POST/PUT/DELETE requests
+- **Token Caching**: Smart caching with 10-minute expiration
+- **Retry Logic**: Exponential backoff on token fetch failures
+- **Auth Store Integration**: Unified with JWT token management
 
 ## Component Integration Patterns
 
@@ -386,6 +356,604 @@ const handleSubmit = async () => {
   } finally {
     isSubmitting.value = false
   }
+}
+</script>
+```
+
+## Advanced Auth Store Patterns
+
+### Concurrency Control & Token Management
+
+The Auth Store implements sophisticated concurrency control to prevent duplicate requests and manage token lifecycle:
+
+```typescript
+// stores/auth.ts - Advanced token management with concurrency control
+export const useAuthStore = defineStore('auth', () => {
+  // Token refresh concurrency control
+  let refreshTokenPromise: Promise<boolean> | null = null
+  let refreshRetryCount = 0
+  const MAX_REFRESH_RETRIES = 2
+  let lastRefreshFailTime = 0
+  const REFRESH_COOLDOWN = 30000
+
+  // JWT token expiration checking with buffer
+  const isTokenExpired = (token: string | null, bufferSeconds: number = 30): boolean => {
+    if (!token) return true
+
+    try {
+      const parts = token.split('.')
+      if (parts.length !== 3) return true
+
+      const payload = JSON.parse(atob(parts[1] || ''))
+      if (!payload.exp || typeof payload.exp !== 'number') return true
+
+      // Apply buffer (default 30 seconds before expiry)
+      const expirationTime = payload.exp * 1000 - (bufferSeconds * 1000)
+      return Date.now() >= expirationTime
+    } catch (error) {
+      return true
+    }
+  }
+
+  // Concurrent token refresh prevention
+  const refreshToken = async (silent: boolean = false): Promise<boolean> => {
+    // Return existing promise if refresh is already in progress
+    if (refreshTokenPromise) {
+      return await refreshTokenPromise
+    }
+
+    // Create new refresh promise
+    refreshTokenPromise = performRefresh(silent)
+
+    try {
+      return await refreshTokenPromise
+    } finally {
+      refreshTokenPromise = null
+    }
+  }
+
+  // Exponential backoff calculation
+  const getBackoffDelay = (attempt: number, base = 500, cap = 5000): number => {
+    const exponential = Math.min(cap, base * Math.pow(2, attempt))
+    const jitter = Math.random() * 200 // Random jitter for load distribution
+    return exponential + jitter
+  }
+
+  // Actual refresh implementation with retry logic
+  const performRefresh = async (silent: boolean = false): Promise<boolean> => {
+    const now = Date.now()
+
+    // Cooldown period check
+    if (now - lastRefreshFailTime < REFRESH_COOLDOWN) {
+      return false
+    }
+
+    // Max retry check
+    if (refreshRetryCount >= MAX_REFRESH_RETRIES) {
+      clearAuth()
+      refreshRetryCount = 0
+      lastRefreshFailTime = now
+      return false
+    }
+
+    try {
+      const { data, error } = await useNuxtPost<RefreshResponse>('auth/refresh', {}, {
+        context: { skipTokenRefresh: true } // Prevent infinite loop
+      })
+
+      if (!error.value && data.value?.status === 'success') {
+        accessToken.value = data.value.data.accessToken
+        user.value = data.value.data.user
+        refreshRetryCount = 0 // Reset retry counter
+        return true
+      }
+
+      refreshRetryCount++
+      if (refreshRetryCount >= MAX_REFRESH_RETRIES) {
+        clearAuth()
+        lastRefreshFailTime = now
+      }
+
+      return false
+    } catch (error) {
+      if (!silent) {
+        console.warn('Token refresh failed:', error)
+      }
+
+      refreshRetryCount++
+      if (refreshRetryCount >= MAX_REFRESH_RETRIES) {
+        clearAuth()
+        lastRefreshFailTime = now
+      }
+
+      return false
+    }
+  }
+})
+```
+
+### Integrated CSRF Management
+
+The Auth Store includes sophisticated CSRF token management with automatic refresh and error handling:
+
+```typescript
+// CSRF token management with concurrency control
+const MAX_CSRF_RETRIES = 3
+let csrfRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let csrfFetchPromise: Promise<string | null> | null = null
+
+const fetchCsrfToken = async (currentRetry: number = 0): Promise<string | null> => {
+  if (currentRetry >= MAX_CSRF_RETRIES) {
+    return null
+  }
+
+  // Prevent concurrent CSRF requests
+  if (isCsrfLoading.value && currentRetry === 0) {
+    await waitForCsrfTokenLoading()
+    return csrfToken.value
+  }
+
+  if (csrfFetchPromise && currentRetry === 0) {
+    return await csrfFetchPromise
+  }
+
+  const fetchPromise = performCsrfFetch(currentRetry)
+  if (currentRetry === 0) {
+    csrfFetchPromise = fetchPromise
+  }
+
+  try {
+    return await fetchPromise
+  } finally {
+    if (currentRetry === 0) {
+      csrfFetchPromise = null
+    }
+  }
+}
+
+const performCsrfFetch = async (currentRetry: number): Promise<string | null> => {
+  isCsrfLoading.value = true
+
+  try {
+    const config = useRuntimeConfig()
+    const response = await $fetch<CsrfApiResponse>(`${config.public.NUXT_API_BASE_URL}/csrf/token`, {
+      method: 'GET',
+      timeout: 10000,
+      credentials: 'include'
+    })
+
+    if (response.status === 'success' && response.data?.csrfToken) {
+      csrfToken.value = response.data.csrfToken
+
+      // Auto-refresh after 10 minutes
+      clearCsrfRefreshTimer()
+      csrfRefreshTimer = setTimeout(() => {
+        clearCsrfToken()
+        fetchCsrfToken()
+      }, 10 * 60 * 1000)
+
+      return response.data.csrfToken
+    } else {
+      throw new Error('Invalid CSRF response')
+    }
+  } catch (error: any) {
+    if (currentRetry < MAX_CSRF_RETRIES) {
+      const delay = Math.pow(2, currentRetry) * 1000 // Exponential backoff
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(fetchCsrfToken(currentRetry + 1))
+        }, delay)
+      })
+    }
+
+    return null
+  } finally {
+    if (currentRetry === 0) {
+      isCsrfLoading.value = false
+    }
+  }
+}
+```
+
+## Cross-Tab Synchronization Patterns
+
+### BroadcastChannel Session Bus
+
+The application implements real-time authentication state synchronization across browser tabs using BroadcastChannel:
+
+```typescript
+// plugins/session-bus.client.ts - Cross-tab authentication synchronization
+interface AuthBusMessage {
+  type: 'LOGIN' | 'ACCESS_TOKEN' | 'LOGOUT'
+  from: string
+  accessToken?: string
+  user?: {
+    idx: number
+    email: string
+    isActive: boolean
+  }
+}
+
+export default defineNuxtPlugin(() => {
+  if (!import.meta.client) return
+
+  // Create BroadcastChannel for cross-tab communication
+  const channel = new BroadcastChannel('auth-bus')
+
+  // Unique tab identifier to prevent message loops
+  const tabId = (crypto?.getRandomValues(new Uint32Array(1))[0] ??
+                Math.floor(Math.random() * 0xffffffff)).toString(16)
+
+  const auth = useAuthStore()
+
+  // Message broadcast helper
+  const broadcast = (msg: Omit<AuthBusMessage, 'from'>) => {
+    const message: AuthBusMessage = { ...msg, from: tabId }
+    channel.postMessage(message)
+  }
+
+  // Outbound: Broadcast when store actions complete
+  auth.$onAction(({ name, after }) => {
+    // Login success
+    if (name === 'login') {
+      after((success: boolean) => {
+        if (success && auth.accessToken) {
+          broadcast({
+            type: 'LOGIN',
+            accessToken: auth.accessToken as string,
+            user: auth.currentUser as any
+          })
+        }
+      })
+    }
+
+    // Token refresh success
+    if (name === 'refreshToken') {
+      after((success: boolean) => {
+        if (success && auth.accessToken) {
+          broadcast({
+            type: 'ACCESS_TOKEN',
+            accessToken: auth.accessToken as string
+          })
+        }
+      })
+    }
+
+    // Logout success
+    if (name === 'logout') {
+      after((success: boolean) => {
+        if (success) {
+          broadcast({ type: 'LOGOUT' })
+        }
+      })
+    }
+  })
+
+  // Inbound: Handle messages from other tabs
+  channel.onmessage = async (event: MessageEvent<AuthBusMessage>) => {
+    const msg = event.data
+
+    // Ignore own messages
+    if (!msg || msg.from === tabId) return
+
+    switch (msg.type) {
+      case 'LOGIN': {
+        // Sync access token from other tab login
+        if (msg.accessToken && auth.accessToken !== msg.accessToken) {
+          // @ts-ignore - Pinia $patch bypasses readonly
+          auth.$patch({
+            accessToken: msg.accessToken,
+            user: msg.user || null
+          })
+
+          // Load profile if user info missing
+          if (!auth.currentUser && msg.accessToken) {
+            await auth.getProfile()
+          }
+        }
+        break
+      }
+
+      case 'ACCESS_TOKEN': {
+        // Sync access token refresh from other tab
+        if (msg.accessToken && auth.accessToken !== msg.accessToken) {
+          // @ts-ignore - Pinia $patch bypasses readonly
+          auth.$patch({ accessToken: msg.accessToken })
+        }
+        break
+      }
+
+      case 'LOGOUT': {
+        // Logout this tab when other tab logs out
+        await auth.clearAuth()
+
+        // Also clear CSRF token
+        const { clearCsrfToken } = useCsrf()
+        clearCsrfToken()
+        break
+      }
+    }
+  }
+
+  // Cleanup on tab close
+  window.addEventListener('beforeunload', () => {
+    channel.close()
+  })
+})
+```
+
+### Cross-Tab State Synchronization Benefits
+
+- **Real-time Sync**: Login/logout in one tab immediately reflects in all tabs
+- **Token Updates**: Token refresh in one tab updates all tabs
+- **Memory Efficiency**: Prevents duplicate token refresh requests across tabs
+- **User Experience**: Seamless authentication state across browser tabs
+- **Security**: Logout in one tab secures all tabs
+
+## Advanced reCAPTCHA Integration
+
+### Dynamic Script Loading & Token Management
+
+The reCAPTCHA system features dynamic script loading, token caching, and automatic validation:
+
+```typescript
+// composables/utils/useRecaptcha.ts - Advanced reCAPTCHA integration
+let recaptchaInstance: RecaptchaInstance | null = null
+let isScriptLoaded = false
+let isLoading = false
+let loadingPromise: Promise<boolean> | null = null
+
+export const useRecaptcha = () => {
+  const isRecaptchaReady = ref(false)
+  const isExecuting = ref(false)
+  const lastError = ref<string | null>(null)
+
+  // Dynamic script loading with error handling
+  const loadRecaptchaScript = async (): Promise<boolean> => {
+    if (isScriptLoaded) return true
+    if (isLoading && loadingPromise) return loadingPromise
+
+    isLoading = true
+    loadingPromise = new Promise((resolve) => {
+      try {
+        // Check if script already exists
+        const existingScript = document.querySelector('script[src*="recaptcha"]')
+        if (existingScript) {
+          isScriptLoaded = true
+          isLoading = false
+          resolve(true)
+          return
+        }
+
+        const config = useRuntimeConfig()
+        const siteKey = config.public.NUXT_RECAPTCHA_SITE_KEY
+        const scriptUrl = `https://www.google.com/recaptcha/api.js?render=${siteKey}&hl=ko`
+
+        const script = document.createElement('script')
+        script.src = scriptUrl
+        script.async = true
+        script.defer = true
+
+        let timeoutId: NodeJS.Timeout
+
+        const cleanup = () => {
+          if (timeoutId) clearTimeout(timeoutId)
+          isLoading = false
+        }
+
+        script.onload = () => {
+          cleanup()
+          isScriptLoaded = true
+          resolve(true)
+        }
+
+        script.onerror = (error) => {
+          cleanup()
+          isScriptLoaded = false
+          console.error('Failed to load reCAPTCHA script:', error)
+          resolve(false)
+        }
+
+        // 10-second timeout
+        timeoutId = setTimeout(() => {
+          cleanup()
+          isScriptLoaded = false
+          console.error('reCAPTCHA script loading timeout')
+          resolve(false)
+        }, 10000)
+
+        document.head.appendChild(script)
+      } catch (error) {
+        isScriptLoaded = false
+        isLoading = false
+        console.error('Exception while loading reCAPTCHA script:', error)
+        resolve(false)
+      }
+    })
+
+    return loadingPromise
+  }
+
+  // Token management with caching and expiry
+  const currentToken = ref<string | null>(null)
+  const tokenGeneratedAt = ref<number | null>(null)
+  const TOKEN_EXPIRY_MS = 110000 // 110 seconds (2 minutes - 10 seconds buffer)
+
+  // Check if current token is still valid
+  const isTokenValid = (): boolean => {
+    if (!currentToken.value || !tokenGeneratedAt.value) {
+      return false
+    }
+
+    const elapsed = Date.now() - tokenGeneratedAt.value
+    return elapsed < TOKEN_EXPIRY_MS
+  }
+
+  // Get valid token (refresh if needed)
+  const getValidToken = async (action: string = 'submit'): Promise<RecaptchaResult> => {
+    // Return existing valid token
+    if (isTokenValid()) {
+      return {
+        success: true,
+        token: currentToken.value!
+      }
+    }
+
+    // Generate new token
+    const result = await executeRecaptcha(action)
+
+    if (result.success && result.token) {
+      currentToken.value = result.token
+      tokenGeneratedAt.value = Date.now()
+    }
+
+    return result
+  }
+
+  // Execute reCAPTCHA with comprehensive error handling
+  const executeRecaptcha = async (action: string = 'submit'): Promise<RecaptchaResult> => {
+    if (isExecuting.value) {
+      return {
+        success: false,
+        error: 'reCAPTCHA is already executing'
+      }
+    }
+
+    try {
+      isExecuting.value = true
+      lastError.value = null
+
+      // Initialize if not ready
+      const ready = await isRecaptchaLoaded()
+      if (!ready || !recaptchaInstance) {
+        return {
+          success: false,
+          error: 'reCAPTCHA not ready or failed to initialize'
+        }
+      }
+
+      const config = useRuntimeConfig()
+      const siteKey = config.public.NUXT_RECAPTCHA_SITE_KEY
+      const token = await recaptchaInstance.execute(siteKey, { action })
+
+      if (!token || typeof token !== 'string' || token.trim() === '') {
+        return {
+          success: false,
+          error: 'Token generation failed - invalid token received'
+        }
+      }
+
+      return {
+        success: true,
+        token
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'reCAPTCHA execution error'
+      lastError.value = errorMessage
+      return {
+        success: false,
+        error: errorMessage
+      }
+    } finally {
+      isExecuting.value = false
+    }
+  }
+
+  // Token expiry countdown in seconds
+  const tokenExpiresIn = computed(() => {
+    if (!tokenGeneratedAt.value || !currentToken.value) return 0
+    const elapsed = Date.now() - tokenGeneratedAt.value
+    const remaining = TOKEN_EXPIRY_MS - elapsed
+    return Math.max(0, Math.floor(remaining / 1000))
+  })
+
+  return {
+    isRecaptchaReady: readonly(isRecaptchaReady),
+    isExecuting: readonly(isExecuting),
+    lastError: readonly(lastError),
+    executeRecaptcha,
+    getValidToken,
+    isTokenValid,
+    currentToken: readonly(currentToken),
+    tokenExpiresIn: readonly(tokenExpiresIn)
+  }
+}
+```
+
+### reCAPTCHA Component Integration
+
+```vue
+<!-- components/common/RecaptchaCheckboxComponent.vue -->
+<template>
+  <div class="recaptcha-container">
+    <div v-if="isLoading" class="recaptcha-loading">
+      Loading reCAPTCHA...
+    </div>
+    <div v-else-if="error" class="recaptcha-error">
+      reCAPTCHA failed to load: {{ error }}
+    </div>
+    <div v-else class="recaptcha-ready">
+      <button
+        @click="generateToken"
+        :disabled="isExecuting"
+        class="recaptcha-button"
+      >
+        {{ isExecuting ? 'Generating...' : 'Verify reCAPTCHA' }}
+      </button>
+      <div v-if="tokenExpiresIn > 0" class="token-status">
+        Token expires in {{ tokenExpiresIn }}s
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  action?: string
+  autoGenerate?: boolean
+}
+
+interface Emits {
+  (e: 'token-generated', token: string): void
+  (e: 'token-error', error: string): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  action: 'submit',
+  autoGenerate: false
+})
+
+const emit = defineEmits<Emits>()
+
+const {
+  isRecaptchaReady,
+  isExecuting,
+  lastError,
+  getValidToken,
+  tokenExpiresIn
+} = useRecaptcha()
+
+const isLoading = computed(() => !isRecaptchaReady.value && !lastError.value)
+const error = computed(() => lastError.value)
+
+const generateToken = async () => {
+  const result = await getValidToken(props.action)
+
+  if (result.success && result.token) {
+    emit('token-generated', result.token)
+  } else {
+    emit('token-error', result.error || 'Failed to generate token')
+  }
+}
+
+// Auto-generate token if requested
+if (props.autoGenerate) {
+  watch(isRecaptchaReady, (ready) => {
+    if (ready) {
+      generateToken()
+    }
+  })
 }
 </script>
 ```
@@ -523,7 +1091,9 @@ export const useErrorHandler = () => {
 This architecture provides a comprehensive, modern API communication system with automatic loading states, authentication, CSRF protection, and robust error handling patterns.
 
 ## Related Documents
-- API Communication Protocol: [`api-communication.md`](./api-communication.md)
-- Auth & Security Architecture: [`auth-security-architecture.md`](./auth-security-architecture.md)
-- Mobile Authentication: [`mobile-authentication.md`](./mobile-authentication.md)
-- Development Environment: [`development-setup.md`](./development-setup.md)
+
+- [Authentication & Security Architecture](./auth-security-architecture.md) - Complete JWT/CSRF authentication system
+- [API Communication Architecture](./api-communication.md) - API communication patterns and proxy implementation
+- [Backend Patterns (NestJS)](./backend-patterns.md) - NestJS development patterns and best practices
+- [Mobile Authentication Guide](./mobile-authentication.md) - Mobile app-specific authentication setup
+- [Development Setup](./development-setup.md) - Environment configuration and setup guide
