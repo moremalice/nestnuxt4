@@ -134,7 +134,7 @@
 - **API Communication Guide:** `docs/api-communication.md` ⭐ (unified documentation)
 - **Web/Mobile auth & CSRF:** `docs/auth-security-architecture.md`, `docs/mobile-authentication.md`
 - **Patterns:** `docs/frontend-patterns.md`, `docs/backend-patterns.md`
-- **Dev/Ports/Deploy:** `docs/development-setup.md`, `docs/port-management.md`
+- **Dev/Ports/Deploy:** `docs/development-setup.md`, `docs/port-management.md` ⭐ (WSL Ubuntu optimized)
 - **Contributing:** `docs/CONTRIBUTING.md`
 
 ## Key Technologies Summary
