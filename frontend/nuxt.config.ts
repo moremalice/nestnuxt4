@@ -2,10 +2,37 @@
 
 export default defineNuxtConfig({
     srcDir: 'app',
-    ssr: false,
+    // 하이브리드 렌더링: 페이지별 SSR/CSR 전환 가능
+    ssr: true,
 
     experimental: {
-        asyncContext: true
+        asyncContext: true,
+        // 빌드 재현성 향상을 위한 실험적 기능
+        payloadExtraction: false
+    },
+
+    // 빌드 재현성을 위한 Vite 설정
+    vite: {
+        build: {
+            // 결정론적 청크 해시 생성
+            rollupOptions: {
+                output: {
+                    // 빌드 ID 기반 일관된 청크명
+                    chunkFileNames: () => {
+                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
+                        return `chunks/[name]-${buildId.slice(0, 8)}.js`
+                    },
+                    entryFileNames: () => {
+                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
+                        return `entry/[name]-${buildId.slice(0, 8)}.js`
+                    },
+                    assetFileNames: () => {
+                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
+                        return `assets/[name]-${buildId.slice(0, 8)}[extname]`
+                    }
+                }
+            }
+        }
     },
 
     devtools: {
@@ -159,9 +186,25 @@ export default defineNuxtConfig({
                 : 'no-store'
           },
 
-    // === 캐시 / 헤더 ===
+    // === 하이브리드 렌더링 + 캐시 전략 ===
     routeRules: {
-        // Temporarily disable caching for testing (recommended by guide)
+        // === 정적 페이지 (빌드 시 사전 렌더링) ===
+        '/': { prerender: true },
+        '/policy/**': { prerender: true },
+
+        // === SSR 페이지 (서버 사이드 렌더링) ===
+        '/dashboard': { ssr: true },
+        '/profile': { ssr: true },
+        '/blog/**': {
+            ssr: true,
+            headers: { 'cache-control': 's-maxage=3600' }
+        },
+
+        // === CSR 페이지 (클라이언트 사이드 렌더링) ===
+        '/community/**': { ssr: false },
+        '/example/**': { ssr: false },
+
+        // === API 및 시스템 파일 ===
         '/sitemap.xml': {
             swr: 0,
             headers: { 'cache-control': 'no-store' }
@@ -174,7 +217,7 @@ export default defineNuxtConfig({
             swr: 0,
             headers: { 'cache-control': 'no-store' }
         },
-        
+
         // === NestJS API 프록시 ===
         '/api/nestjs/**': {
             cors: true,

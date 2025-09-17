@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "^2.6.3",
+    "@types/node": "^24.5.1",
     "cross-env": "^10.0.0",
     "nuxt-qrcode": "^0.4.8"
   }

@@ -1,0 +1,55 @@
+# 재현 가능한 빌드를 위한 전용 Docker 이미지
+FROM node:20-alpine AS build-env
+
+# 빌드 재현성을 위한 환경 변수
+ENV NODE_ENV=production
+ENV npm_config_cache=/tmp/.npm
+ENV HUSKY=0
+
+WORKDIR /app
+
+# 의존성 캐시 최적화
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+COPY frontend/package*.json ./frontend/
+
+# 정확한 의존성 버전 설치
+RUN npm ci --only=production --frozen-lockfile
+
+# 소스 코드 복사
+COPY . .
+
+# 빌드 ID 설정 (Git commit hash 사용)
+ARG BUILD_ID
+ENV NUXT_BUILD_ID=${BUILD_ID}
+ENV NUXT_BUILD_TIMESTAMP=$(date +%s)
+
+# 백엔드 빌드
+WORKDIR /app/backend
+RUN npm ci --only=production --frozen-lockfile && \
+    npm run build
+
+# 프론트엔드 빌드
+WORKDIR /app/frontend
+RUN npm ci --only=production --frozen-lockfile && \
+    npm run build
+
+# 빌드 결과 정리
+WORKDIR /app
+RUN mkdir -p /build && \
+    cp -r backend/dist backend/node_modules backend/package.json /build/backend/ && \
+    cp -r frontend/.output frontend/static /build/frontend/
+
+# 빌드 메타데이터 생성
+RUN echo "{ \
+  \"buildId\": \"${BUILD_ID}\", \
+  \"timestamp\": \"$(date -Iseconds)\", \
+  \"nodeVersion\": \"$(node --version)\", \
+  \"npmVersion\": \"$(npm --version)\" \
+}" > /build/build-info.json
+
+# 최종 아티팩트만 포함한 경량 이미지
+FROM alpine:latest AS artifacts
+WORKDIR /artifacts
+COPY --from=build-env /build /artifacts
+CMD ["tar", "-czf", "/tmp/build-artifacts.tar.gz", "-C", "/artifacts", "."]

@@ -76,7 +76,8 @@
       "Read(/backend/**/*.log)",
       "Read(/**/package-lock.json)",
       "Read(/**/yarn.lock)",
-      "Read(/**/pnpm-lock.yaml)"
+      "Read(/**/pnpm-lock.yaml)",
+      "Read(/build-output/**)"
     ]
   },
   "env": {
