@@ -5,10 +5,92 @@
 - Goal: practical, secure, performant, maintainable code. Short, direct answers.
 - Full details live in `docs/`. This file is a **brief index** for Claude.
 
-## Answer Style
-- Provide clear, concise responses in the requested language.
-- Prefer minimal diffs/patches over full-file dumps unless requested.
-- Show reasoning succinctly; prioritize actionable steps and correctness.
+## Answer Style ⚠️ CRITICAL GUIDELINES
+
+### Core Requirements (NON-NEGOTIABLE)
+- **MUST** provide responses in the requested language (Korean/English as specified)
+- **ALWAYS** use minimal diffs/patches - NEVER dump full files unless explicitly requested
+- **REQUIRED**: Concise reasoning with actionable steps prioritized over verbose explanations
+- **FORBIDDEN**: Lengthy responses when simple, direct solutions exist
+
+### Response Format Standards
+- **Code Changes**: Show only modified sections + 2-3 lines context maximum
+- **Explanations**: Maximum 3 bullet points unless exceptional complexity requires more
+- **File Operations**: Use Edit tool for targeted changes, Write tool only for new files
+- **Reasoning**: 1-2 sentences maximum per change unless critical complexity demands more
+
+### Examples: GOOD vs BAD Responses
+
+#### ✅ GOOD: Minimal Diff Response
+```diff
+// nuxt.config.ts
+- baseURL: 'http://localhost:3000'
++ baseURL: process.env.NUXT_PUBLIC_SITE_URL
+```
+**Rationale**: Environment-specific URL configuration for better deployment flexibility.
+
+#### ❌ BAD: Full File Dump
+```typescript
+// [200+ lines of complete nuxt.config.ts file when only 1 line changed]
+```
+
+#### ✅ GOOD: Language Adherence
+**User asks in Korean**: "API 설정을 업데이트해주세요"
+**Response in Korean**: "API 설정을 다음과 같이 수정합니다..."
+
+#### ❌ BAD: Language Mismatch
+**User asks in Korean**: "API 설정을 업데이트해주세요"
+**Response in English**: "I'll update the API configuration..."
+
+#### ✅ GOOD: Concise Reasoning
+"Updated to use environment variables for better security and deployment flexibility."
+
+#### ❌ BAD: Verbose Explanation
+"In this modern development paradigm, we must consider the importance of environment-specific configuration management, which allows us to maintain separation of concerns between different deployment targets while ensuring that sensitive configuration data is properly abstracted..."
+
+### Measurable Quality Standards
+
+#### Response Length Limits
+- **Code-only changes**: ≤ 50 words explanation maximum
+- **Feature additions**: ≤ 150 words total response maximum
+- **Complex refactoring**: ≤ 300 words total response maximum
+- **Architecture changes**: ≤ 500 words total response maximum
+
+#### Code Change Guidelines
+- **Single file edit**: Show ≤ 10 lines of diff context
+- **Multiple file edits**: Use separate Edit tool calls, not Write tool dumps
+- **New feature**: Create ≤ 3 new files maximum per response
+- **Configuration changes**: Show only modified sections, never entire config files
+
+#### Language Switching Rules
+- **Korean request markers**: "해주세요", "하려면", "어떻게", Korean technical terms
+- **English request markers**: Direct English questions, technical documentation requests
+- **Mixed requests**: Follow the primary language (>60% of request content)
+- **Response language**: Must match request language 100% (except code examples)
+
+### 🚨 Violation Indicators & Enforcement
+
+#### CRITICAL VIOLATIONS (Immediate Correction Required)
+- **❌ LANGUAGE MISMATCH**: Responding in English to Korean request or vice versa
+- **❌ FULL FILE DUMP**: Showing complete file when <10 lines changed
+- **❌ VERBOSE BLOAT**: >500 word response for simple configuration change
+- **❌ TOOL MISUSE**: Using Write tool when Edit tool is appropriate
+
+#### QUALITY VIOLATIONS (Response Quality Issues)
+- **⚠️ EXCESSIVE CONTEXT**: Showing >10 lines diff context for simple changes
+- **⚠️ OVER-EXPLANATION**: >3 bullet points for straightforward modifications
+- **⚠️ REASONING BLOAT**: >2 sentences explanation for obvious changes
+- **⚠️ UNNECESSARY VERBOSITY**: Academic language instead of direct technical communication
+
+#### ENFORCEMENT ACTIONS
+- **CRITICAL VIOLATIONS**: Require immediate response correction and re-approach
+- **QUALITY VIOLATIONS**: Recommend response optimization and brevity improvement
+- **REPEAT VIOLATIONS**: Escalate to stricter guideline adherence protocols
+
+#### COMPLIANCE INDICATORS ✅
+- **GOOD**: Minimal diff + 1 sentence rationale + correct language
+- **EXCELLENT**: Targeted solution + actionable steps + efficient communication
+- **OUTSTANDING**: Zero wasted words + perfect tool usage + instant problem resolution
 
 ## Documentation Language Policy
 - **All documentation files in `docs/` must be written in English** for consistency and accessibility.
@@ -21,8 +103,9 @@
 - **Web auth:** HttpOnly refresh cookie + short-lived access token (in memory). **CSRF: double-submit token** on state-changing requests.
 - **Mobile auth:** Bearer (AT/RT) without cookies; store RT in secure storage (Keychain/Keystore). CSRF not applicable.
 - **API Communication:** Modern `useNuxtApi` series (useFetch-based). Backend access through `/api/nestjs/*` proxy layer.
+- **Security-Enhanced URLs:** Private backend URLs (server-only) + public proxy paths (client-safe). CDN URLs unified and separated from site URLs.
 - **Type System:** Inline type definitions in each component for independent development and reduced dependencies.
-- **SSR:** Nuxt fetches server-side with credentials when needed. Keep API base consistent via env/proxy. Avoid leaking secrets to client.
+- **SSR:** Nuxt fetches server-side with credentials when needed. Backend URLs resolved privately on server. No secrets leaked to client.
 - **Single domain (prod):** `/api/**` → Nest, others → Nuxt SSR (reverse proxy).
 
 ## Coding Rules (anchors)

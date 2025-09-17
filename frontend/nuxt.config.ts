@@ -95,7 +95,7 @@ export default defineNuxtConfig({
             {code: 'zh_t', language: 'zh-Hant', file: 'zh-TW.json'}
         ],
 
-        defaultLocale: 'ko',
+        defaultLocale: 'en',
         strategy: 'no_prefix',
 
         detectBrowserLanguage: {
@@ -179,34 +179,25 @@ export default defineNuxtConfig({
         '/api/nestjs/**': {
             cors: true,
             headers: { 'access-control-allow-credentials': 'true' }
-        },
-        
-        // === CDN 프록시 설정 ===
-        '/api/proxy/**': {
-            proxy: `${process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com'}/data/**`,
-            headers: {
-                'access-control-allow-origin': '*',
-                'cache-control': 'public, max-age=3600'
-            }
         }
     },
 
     runtimeConfig: {
-        // ======== 서버 전용 (비공개) ========
-        // 실제 백엔드 API URL - 클라이언트에 노출되지 않음
+        // ======== Server-Only (Private) ========
+        // Real backend API URL - NOT exposed to client
         NEST_BACKEND_BASE_URL: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
 
-        // ======== 클라이언트 노출 (공개) ========
-        // 공개되어도 안전한 설정들
+        // ======== Client-Exposed (Public) ========
+        // Safe for client bundle exposure
         public: {
             NUXT_APP_ENVIRONMENT: process.env.NUXT_PUBLIC_APP_ENV || 'local',
-            // 프록시 경로 (실제 URL 숨김)
+            // Proxy path only (hides real backend URL)
             NUXT_API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
-            // SEO, 메타 태그용 사이트 URL
-            NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL,
-            // CDN, 정적 리소스용 통합 URL
+            // Site URL for SEO, canonical, meta tags
+            NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+            // File server URL for downloads, streaming, static resources (/data/ paths)
             NUXT_CDN_BASE_URL: process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com',
-            NUXT_RECAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY,
+            NUXT_RECAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
         }
     }
 })

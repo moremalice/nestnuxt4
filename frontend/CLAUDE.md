@@ -112,11 +112,26 @@
 - **No Global Side Effects:** Avoid global CSS that affects other components
 
 ## Environment & Configuration
-- **Runtime Config:** Environment-specific API base URLs and feature flags
+- **Security-Enhanced Variables:** Private backend URLs (server-only) vs public proxy paths (client-safe)
 - **Multi-Environment:** local/development/production with appropriate settings
+- **CDN URL Management:** Unified CDN configuration separate from site URLs
+- **Runtime Config:** Environment-specific API base URLs and feature flags
 - **i18n Configuration:** 15 languages with security-focused compilation settings
 - **SEO & Performance:** Sitemap generation, robots.txt, cache control headers
 - **Development vs Production:** Different security, caching, and optimization settings
+
+### Environment Variable Security Strategy
+```typescript
+// Private (server-only) - Real backend URLs hidden from client
+NEST_BACKEND_BASE_URL: config.NUXT_BACKEND_BASE_URL
+
+// Public (client-exposed) - Safe for client bundles
+public: {
+  NUXT_API_BASE_URL: '/api/nestjs',        // Proxy path only
+  NUXT_APP_SITE_URL: config.public.url,   // SEO, meta tags
+  NUXT_CDN_BASE_URL: config.cdn.url       // Static resources
+}
+```
 
 ## Prompt Recipes
 - **Add New API Endpoint**: Use `useNuxtPost('endpoint', data)`, define types inline within component

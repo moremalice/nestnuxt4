@@ -30,19 +30,19 @@ const dynamicMinHeight = computed(() => {
   return 'auto'
 })
 
-// 이용약관 상세 조회
+// Terms detail lookup
 const selectTerms = async (termsIdx: number) => {
-    const response = await useApi<TermsData>('/policy/getTermsDetail', {
+  const { data, error } = await useNuxtPost<TermsData>('policy/getTermsDetail', {
     idx: Number(termsIdx),
     lang: locale.value
   })
 
-  if (response.status === 'success') {
-    selectedTerms.value = response.data
+  if (!error.value && data.value?.status === 'success') {
+    selectedTerms.value = data.value.data
     selectedIndex.value = termsList.value.findIndex((term: TermsData) => term.idx === termsIdx)
     isDropdownOpen.value = false
   } else {
-    handleApiError(response.data)
+    handleApiError(error.value?.data || data.value?.data)
 
     selectedTerms.value = null
     selectedIndex.value = -1
@@ -54,7 +54,7 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-// 이용약관 목록 조회
+// Terms list lookup
 const loadTermsList = async () => {
   const { data, error } = await useNuxtPost<TermsData[]>('policy/getTermsList', {
     lang: locale.value,

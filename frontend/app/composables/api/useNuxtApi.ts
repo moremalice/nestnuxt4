@@ -1,8 +1,4 @@
 // composables/api/useNuxtApi.ts
-/**
- * Nuxt 4 API 컴포저블
- * 기존 useApi와 유사하지만 useFetch 기반
- */
 
 import type { ApiResponse, ApiContextFlags } from '../utils/useApiHelper'
 
@@ -13,9 +9,6 @@ interface SimpleApiOptions {
   server?: boolean
 }
 
-/**
- * API 호출 - useFetch 기반
- */
 export const useNuxtApi = async <T = any>(
   endpoint: string,
   options: SimpleApiOptions = {}
@@ -27,14 +20,15 @@ export const useNuxtApi = async <T = any>(
     server = true
   } = options
 
-  // 로딩 관리
+  const config = useRuntimeConfig()
+  const apiBasePath = config.public.NUXT_API_BASE_URL
+
   const { showLoading, hideLoading } = useLoadingUI()
-  
-  // Auth store
+
   const authStore = useAuthStore()
   const { token } = storeToRefs(authStore)
 
-  const result = await useFetch<ApiResponse<T>>(`/api/nestjs/${endpoint}`, {
+  const result = await useFetch<ApiResponse<T>>(`${apiBasePath}/${endpoint}`, {
     method: body ? 'POST' : 'GET',
     body,
     query,

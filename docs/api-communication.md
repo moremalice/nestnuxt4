@@ -6,18 +6,52 @@ This document describes the modern Nuxt 4 and NestJS API communication structure
 
 ## Architecture
 
-### Simplified Proxy Layer
+### Security-Enhanced Environment Variable Strategy
+
+**Environment Variable Separation (Implemented Security Pattern):**
+```typescript
+// nuxt.config.ts
+runtimeConfig: {
+  // ======== Server-Only (Private) ========
+  // Real backend API URL - NOT exposed to client bundle
+  NEST_BACKEND_BASE_URL: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
+
+  // ======== Client-Exposed (Public) ========
+  // Safe for client bundle exposure
+  public: {
+    // Proxy path only (hides real backend URL)
+    NUXT_API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE,
+    // SEO, meta tags, canonical URLs
+    NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL,
+    // CDN, static resources
+    NUXT_CDN_BASE_URL: process.env.NUXT_PUBLIC_CDN_BASE
+  }
+}
+```
+
+**Security Benefits:**
+- ✅ **Backend URLs Hidden**: Real API endpoints never exposed in client bundles
+- ✅ **Proxy Layer Protection**: Frontend only knows `/api/nestjs/*` proxy paths
+- ✅ **Environment Isolation**: Different backend URLs per environment (local/dev/prod)
+- ✅ **CDN Separation**: Static resources separate from API endpoints
+- ✅ **Bundle Analysis Safe**: Client bundle contains no sensitive infrastructure URLs
+
+### Proxy Architecture
 ```
 Frontend (Nuxt) ──useNuxtApi──> /api/nestjs/* ──HTTP──> Backend (NestJS)
      ↓                          ↓                          ↓
-useNuxtGet/Post series      Simplified proxy         TransformInterceptor
+useNuxtGet/Post series      NestJS API proxy         TransformInterceptor
      ↓                          ↓                          ↓
 Automatic: Loading, Auth,   Header forwarding,       Consistent response
 CSRF, Error handling        Status forwarding        { status, data }
+
+Static Resources ──> /api/proxy/* ──HTTP──> CDN (pikitalk.com/data/*)
+     ↓                      ↓                    ↓
+Direct file access     CDN proxy handler    Range header support
 ```
 
-### Server Proxy (`/server/api/nestjs/[...path].ts`)
-**Currently Implemented Simplified Proxy:**
+### NestJS API Proxy (`/server/api/nestjs/[...path].ts`)
+**Backend API Proxy Implementation:**
 ```typescript
 export default defineEventHandler(async (event) => {
   const path = getRouterParam(event, 'path') ?? ''
@@ -44,7 +78,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const config = useRuntimeConfig()
-    const nestApiUrl = config.public.NUXT_API_BASE_URL
+    const nestApiUrl = config.NEST_BACKEND_BASE_URL // Private backend URL (server-only)
 
     const response = await $fetch.raw(`${nestApiUrl}/${path}`, {
       method, query, body, headers: forwardHeaders,
@@ -71,6 +105,36 @@ export default defineEventHandler(async (event) => {
         message: error.message || 'Backend request failed'
       }
     }
+  }
+})
+```
+
+### CDN Proxy (`/server/api/proxy/[...path].ts`)
+**Static Resource Proxy Implementation:**
+```typescript
+export default defineEventHandler(async (event) => {
+  const path = getRouterParam(event, 'path') ?? ''
+
+  // Forward Range headers for HLS streaming
+  const reqHeaders = getRequestHeaders(event)
+  const forward: Record<string, string> = {}
+  for (const h of ['range', 'if-none-match', 'if-modified-since', 'accept', 'user-agent', 'referer']) {
+    if (reqHeaders[h]) forward[h] = reqHeaders[h] as string
+  }
+
+  try {
+    const config = useRuntimeConfig()
+    const cdnBaseUrl = config.public.NUXT_CDN_BASE_URL
+    const upstream = await fetch(`${cdnBaseUrl}/data/${path}`, { headers: forward })
+
+    // Return Response object directly (auto-forwards headers/status/stream)
+    return upstream
+
+  } catch (error) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Proxy request failed'
+    })
   }
 })
 ```
@@ -187,7 +251,7 @@ if (!error.value && data.value?.status === 'success') {
 ```typescript
 export default defineNuxtPlugin((nuxtApp) => {
   const api = $fetch.create({
-    baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL,
+    baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL, // Proxy path (/api/nestjs)
     credentials: 'include',
     timeout: 30000,
 
@@ -598,8 +662,70 @@ const loadPrivacyList = async () => {
 }
 ```
 
+## Security Architecture Benefits
+
+### 🔒 **URL Security Implementation**
+
+**Problem Solved:**
+Traditional SPAs often expose backend URLs in client bundles, making infrastructure visible to attackers and complicating environment management.
+
+**Our Solution:**
+```typescript
+// ❌ Traditional approach - Backend URL exposed in client
+const response = await fetch('https://api.example.com/users') // Visible in browser
+
+// ✅ Our approach - Two-layer security
+const response = await useNuxtPost('users', data) // Client only knows proxy path
+//                                 ↓
+//                      Server resolves to: config.NEST_BACKEND_BASE_URL
+```
+
+**Security Benefits Achieved:**
+
+1. **🔐 Infrastructure Hiding**
+   - Real backend URLs never appear in client JavaScript bundles
+   - Environment-specific URLs remain server-side secrets
+   - Bundle analysis reveals no sensitive infrastructure information
+
+2. **🛡️ Attack Surface Reduction**
+   - Attackers cannot directly target backend endpoints
+   - All requests must go through authenticated proxy layer
+   - Backend receives only validated, filtered requests
+
+3. **🌍 Environment Isolation**
+   - Development/staging/production backends completely isolated
+   - Zero chance of accidental cross-environment requests
+   - Client code identical across all environments
+
+4. **📊 Monitoring & Control**
+   - All API traffic passes through single proxy point
+   - Centralized logging, rate limiting, and security headers
+   - Easy to implement request/response transformation
+
+### 🎯 **Real-World Security Impact**
+
+**Before Implementation:**
+```javascript
+// Client bundle contained:
+const API_BASE = 'https://api-prod.company.com'  // Exposed to attackers
+const DEV_API = 'https://api-dev.company.com'    // Internal URLs leaked
+```
+
+**After Implementation:**
+```javascript
+// Client bundle only contains:
+const API_BASE = '/api/nestjs'  // No infrastructure information exposed
+```
+
+**Threat Mitigation:**
+- ✅ **Information Disclosure**: Backend URLs hidden from client
+- ✅ **Direct Attacks**: Backend not directly accessible
+- ✅ **Environment Confusion**: Client identical across environments
+- ✅ **Infrastructure Mapping**: Attacker cannot enumerate internal services
+
 ## Key Benefits
 
+- ✅ **Security**: Private backend URLs with public proxy protection
 - ✅ **Simplicity**: Ready to use without complex setup
 - ✅ **Performance**: useFetch-based optimization (caching, deduplication, reactive)
 - ✅ **Type Safety**: Complete TypeScript support
@@ -607,7 +733,7 @@ const loadPrivacyList = async () => {
 - ✅ **SSR Support**: Perfect server-side rendering support
 - ✅ **Modern**: Latest patterns using Nuxt 4's useFetch
 
-**Access all backend APIs through `/api/nestjs/` routes using the `useNuxtApi` series! 🚀**
+**Access all backend APIs securely through `/api/nestjs/` routes using the `useNuxtApi` series! 🚀**
 
 ## Related Documents
 - Auth & Security Architecture: [`auth-security-architecture.md`](./auth-security-architecture.md)

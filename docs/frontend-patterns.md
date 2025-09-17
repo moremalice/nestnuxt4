@@ -2,6 +2,39 @@
 
 ## API Plugin & Automatic Loading System
 
+### Security Pattern: Server Handler vs Client Plugin
+
+**Server Handler (Private Backend Access):**
+```typescript
+// server/api/nestjs/[...path].ts
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+  // Private backend URL - only accessible on server-side
+  const nestApiUrl = config.NEST_BACKEND_BASE_URL
+
+  const response = await $fetch.raw(`${nestApiUrl}/${path}`, {
+    method, query, body, headers: forwardHeaders
+  })
+
+  return response._data
+})
+```
+
+**Client Plugin (Public Proxy Access):**
+```typescript
+// app/plugins/api.ts - Client uses proxy path only
+const api = $fetch.create({
+  baseURL: '/api/nestjs', // Public proxy path, hides real backend
+  credentials: 'include'
+})
+```
+
+**Security Benefits:**
+- ✅ **Two-Layer Protection**: Client → Proxy → Backend (real URLs hidden)
+- ✅ **Server-Side Resolution**: Backend URLs resolved only on server
+- ✅ **Environment Isolation**: Different backends per environment
+- ✅ **Bundle Security**: No sensitive URLs in client JavaScript
+
 ### API Plugin Configuration (`app/plugins/api.ts`)
 
 The frontend uses a centralized API plugin that automatically handles loading states, authentication, and CSRF protection:
@@ -10,7 +43,7 @@ The frontend uses a centralized API plugin that automatically handles loading st
 // app/plugins/api.ts
 export default defineNuxtPlugin((nuxtApp) => {
   const api = $fetch.create({
-    baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL,
+    baseURL: useRuntimeConfig().public.NUXT_API_BASE_URL, // Proxy path: /api/nestjs
     credentials: 'include',
     timeout: 30000,
 

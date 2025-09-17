@@ -18,7 +18,7 @@
             id="qr-input"
             v-model="qrText"
             type="text"
-            placeholder="https://pikitalk.com"
+            :placeholder="config.public.NUXT_APP_SITE_URL"
             class="text-input"
           />
         </div>
@@ -89,7 +89,8 @@ definePageMeta({
 })
 
 // 반응형 데이터
-const qrText = ref('https://pikitalk.com')
+const config = useRuntimeConfig()
+const qrText = ref(config.public.NUXT_APP_SITE_URL)
 
 // QR 코드 옵션
 const qrOptions = ref({

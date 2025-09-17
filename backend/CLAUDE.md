@@ -42,10 +42,22 @@
 - **Security Headers:** Environment-based security middleware configuration
 
 ## API Communication & Frontend Integration
-- **Frontend Proxy:** Nuxt server receives `/api/nestjs/*` requests
+- **Frontend Proxy:** Nuxt server receives `/api/nestjs/*` requests via security-enhanced proxy layer
+- **Private URL Resolution:** Backend URLs resolved on Nuxt server-side only, hidden from client bundles
+- **Environment Isolation:** Different backend URLs per environment (local/dev/prod) without client exposure
 - **Standard Response Format:** Consistent `{ status: 'success'|'error', data: T }` format via TransformInterceptor
 - **Compatibility Guarantee:** 100% preservation of existing NestJS structure, independent of frontend changes
 - **Type Synchronization:** When creating new endpoints, define types inline in relevant frontend components for better maintainability
+
+### Security Architecture Integration
+```typescript
+// Frontend server handler accesses private backend URL
+const config = useRuntimeConfig()
+const nestApiUrl = config.NEST_BACKEND_BASE_URL // Private, server-only
+
+// Client code only knows proxy path
+const { data } = await useNuxtPost('/api/nestjs/endpoint', body) // Public proxy
+```
 
 ## TypeScript Configuration & Standards
 - **Strict Mode:** Enable `noImplicitAny: true`, `strictBindCallApply: true` for better type safety

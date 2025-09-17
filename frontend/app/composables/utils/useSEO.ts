@@ -20,18 +20,23 @@ const SEO_CONSTANTS = {
 }
 
 /* --------------------------------------------------------------------------
- * 공통 유틸
+ * 공통 유틸 - 런타임 설정 기반
  * -------------------------------------------------------------------------- */
-const CANONICAL_HOST = 'https://pikitalk.com' // ← 반드시 한쪽으로 통일
+const getCanonicalHost = () => {
+    const config = useRuntimeConfig()
+    return config.public.NUXT_APP_SITE_URL
+}
 
 const toAbsolute = (src?: string) => {
-    const fallback = `${CANONICAL_HOST}/images/Pikibrand_preview.png`
+    const canonicalHost = getCanonicalHost()
+    const fallback = `${canonicalHost}/images/Pikibrand_preview.png`
     if (!src) return fallback
-    return /^https?:\/\//i.test(src) ? src : new URL(src, CANONICAL_HOST).toString()
+    return /^https?:\/\//i.test(src) ? src : new URL(src, canonicalHost).toString()
 }
 const toAbsoluteUrl = (url?: string) => {
-    if (!url) return CANONICAL_HOST
-    return /^https?:\/\//i.test(url) ? url : new URL(url, CANONICAL_HOST).toString()
+    const canonicalHost = getCanonicalHost()
+    if (!url) return canonicalHost
+    return /^https?:\/\//i.test(url) ? url : new URL(url, canonicalHost).toString()
 }
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '')
 const trim160 = (s: string) => (s.length > 160 ? s.slice(0, 157) + '...' : s)
@@ -43,17 +48,20 @@ const trimTitle = (s: string, length: number = 60) => {
 /* --------------------------------------------------------------------------
  * 기본 SEO 데이터를 객체로 반환
  * -------------------------------------------------------------------------- */
-export const getSEOData = () => ({
-    title: SEO_CONSTANTS.title,
-    description: SEO_CONSTANTS.description,
-    ogTitle: SEO_CONSTANTS.ogTitle,
-    ogDescription: SEO_CONSTANTS.ogDescription,
-    ogImage: SEO_CONSTANTS.ogImage,
-    ogUrl: SEO_CONSTANTS.ogUrl,
-    keywords: SEO_CONSTANTS.keywords,
-    author: SEO_CONSTANTS.author,
-    googleSiteVerification: SEO_CONSTANTS.googleSiteVerification
-})
+export const getSEOData = () => {
+    const canonicalHost = getCanonicalHost()
+    return {
+        title: SEO_CONSTANTS.title,
+        description: SEO_CONSTANTS.description,
+        ogTitle: SEO_CONSTANTS.ogTitle,
+        ogDescription: SEO_CONSTANTS.ogDescription,
+        ogImage: SEO_CONSTANTS.ogImage,
+        ogUrl: canonicalHost, // 런타임 설정에서 가져옴
+        keywords: SEO_CONSTANTS.keywords,
+        author: SEO_CONSTANTS.author,
+        googleSiteVerification: SEO_CONSTANTS.googleSiteVerification
+    }
+}
 
 /* --------------------------------------------------------------------------
  * 공통 SEO 적용 함수 (전역 기본 + 커스텀만 병합)
