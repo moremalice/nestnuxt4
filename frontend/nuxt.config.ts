@@ -2,8 +2,8 @@
 
 export default defineNuxtConfig({
     srcDir: 'app',
-    // 하이브리드 렌더링: 페이지별 SSR/CSR 전환 가능
-    ssr: true,
+    // 하이브리드 렌더링: 기본 CSR, 특정 페이지만 SSR
+    ssr: false,
 
     experimental: {
         asyncContext: true,
@@ -188,21 +188,23 @@ export default defineNuxtConfig({
 
     // === 하이브리드 렌더링 + 캐시 전략 ===
     routeRules: {
-        // === 정적 페이지 (빌드 시 사전 렌더링) ===
-        '/': { prerender: true },
-        '/policy/**': { prerender: true },
-
-        // === SSR 페이지 (서버 사이드 렌더링) ===
+        // === SSR 페이지 (메인페이지와 특정 페이지만) ===
+        '/': {
+            ssr: true,
+            prerender: true
+        },
         '/dashboard': { ssr: true },
         '/profile': { ssr: true },
         '/blog/**': {
             ssr: true,
             headers: { 'cache-control': 's-maxage=3600' }
         },
+        '/policy/**': {
+            ssr: true,
+            prerender: true
+        },
 
-        // === CSR 페이지 (클라이언트 사이드 렌더링) ===
-        '/community/**': { ssr: false },
-        '/example/**': { ssr: false },
+        // === 나머지 모든 페이지는 기본값(CSR) 사용 ===
 
         // === API 및 시스템 파일 ===
         '/sitemap.xml': {
