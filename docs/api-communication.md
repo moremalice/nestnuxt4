@@ -353,7 +353,220 @@ export const isAuthError = (err: any): boolean => {
 
 ## Development Patterns
 
-### Component API Usage
+### CSR (Client-Side Rendering) Usage
+
+#### Basic GET Request Pattern
+```typescript
+// pages/profile.vue (CSR page)
+<script setup lang="ts">
+interface UserProfile {
+  idx: number
+  email: string
+  isActive: boolean
+  createdAt: string
+}
+
+// Automatic JWT token attachment, error handling, loading UI
+const { data, error, pending } = await useGet<UserProfile>('auth/profile')
+
+// Reactive data usage
+watchEffect(() => {
+  if (data.value?.data) {
+    console.log('User profile loaded:', data.value.data)
+  }
+  if (data.value?.error) {
+    showNotification(data.value.error.message, 'error')
+  }
+})
+</script>
+
+<template>
+  <div v-if="pending">Loading...</div>
+  <div v-else-if="data?.data">
+    <h1>Welcome, {{ data.data.email }}</h1>
+    <p>Status: {{ data.data.isActive ? 'Active' : 'Inactive' }}</p>
+  </div>
+  <div v-else-if="data?.error">
+    Error: {{ data.error.message }}
+  </div>
+</template>
+```
+
+#### POST Request with Form Handling
+```typescript
+// pages/login.vue (CSR page)
+<script setup lang="ts">
+interface LoginRequest {
+  email: string
+  password: string
+}
+
+interface AuthResponse {
+  accessToken: string
+  user: { idx: number; email: string }
+}
+
+const form = reactive<LoginRequest>({
+  email: '',
+  password: ''
+})
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+const handleLogin = async () => {
+  try {
+    // Automatic CSRF token attachment, global loading display
+    const { data, error } = await usePost<AuthResponse>('auth/login', form)
+
+    if (data.value?.data) {
+      // Success: Auth store automatically updated via interceptor
+      await router.push('/dashboard')
+    }
+
+    if (data.value?.error) {
+      // Error: Automatically normalized error format
+      showNotification(data.value.error.message, 'error')
+    }
+  } catch (err) {
+    console.error('Login failed:', err)
+  }
+}
+</script>
+```
+
+#### Advanced Options Usage
+```typescript
+// Advanced API call with custom options
+const { data, refresh, pending } = await useApi<SearchResults>('users/search', {
+  method: 'GET',
+  query: { page: 1, limit: 10, search: searchTerm },
+  withLoading: true,        // Show global loading UI
+  timeout: 15000,           // 15 second timeout
+  retry: 3,                 // Retry 3 times on failure
+  immediate: false,         // Manual execution
+  key: 'user-search-cache', // Cache key for optimization
+  watch: [searchTerm]       // Re-execute when searchTerm changes
+})
+
+// Manual execution when needed
+await refresh()
+```
+
+### SSR (Server-Side Rendering) Usage
+
+#### SSR Page with Initial Data
+```typescript
+// pages/dashboard.vue (SSR page)
+<script setup lang="ts">
+// Page metadata enables SSR (configured in nuxt.config.ts)
+definePageMeta({
+  middleware: 'auth',  // Authentication middleware
+  title: 'Dashboard'
+})
+
+interface DashboardData {
+  user: User
+  stats: DashboardStats
+  recentActivity: Activity[]
+}
+
+// SSR: Executed on server, provides initial data
+const { data: dashboardData } = await useAsyncData('dashboard-overview', async () => {
+  // Server-side cookie-based authentication automatically handled
+  const { data } = await useGet<DashboardData>('dashboard/overview', {}, {
+    server: true,        // Execute only on server
+    lazy: false,         // Immediate loading
+    default: () => null  // Default value during loading
+  })
+
+  return data.value?.data || null
+})
+
+// Client-side additional data loading
+const { data: notifications, refresh: refreshNotifications } = await useGet<Notification[]>(
+  'dashboard/notifications',
+  { limit: 5 },
+  {
+    server: false,      // Execute only on client
+    lazy: true,         // Lazy loading
+    immediate: true     // Auto-execute when component mounts
+  }
+)
+
+// Hybrid: Both server and client execution
+const { data: preferences } = await useGet<UserPreferences>('user/preferences', {}, {
+  server: true,       // Initial server load
+  lazy: false,        // Immediate on server
+  // Client-side cache revalidation on navigation
+})
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+  // Client-only: Load additional profile data if needed
+  if (authStore.isAuthenticated && !authStore.currentUser) {
+    authStore.getProfile() // Uses JWT token automatically
+  }
+})
+</script>
+
+<template>
+  <!-- Server-rendered initial content -->
+  <div v-if="dashboardData">
+    <h1>Dashboard</h1>
+    <div class="stats">
+      <div>Users: {{ dashboardData.stats.totalUsers }}</div>
+      <div>Active: {{ dashboardData.stats.activeUsers }}</div>
+    </div>
+
+    <!-- Client-side loaded content -->
+    <div class="notifications">
+      <h2>Recent Notifications</h2>
+      <div v-if="notifications?.data">
+        <div v-for="notification in notifications.data" :key="notification.id">
+          {{ notification.message }}
+        </div>
+      </div>
+      <div v-else-if="notifications?.error">
+        Failed to load notifications
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+#### Hybrid Rendering Configuration
+```typescript
+// nuxt.config.ts - Rendering strategy
+export default defineNuxtConfig({
+  ssr: false, // Default CSR for all pages
+
+  routeRules: {
+    // SSR pages for SEO and initial load performance
+    '/': { ssr: true, prerender: true },
+    '/dashboard': { ssr: true },
+    '/profile': { ssr: true },
+    '/blog/**': {
+      ssr: true,
+      headers: { 'cache-control': 's-maxage=3600' }
+    },
+
+    // CSR pages for dynamic interaction
+    '/login': {}, // Default CSR
+    '/register': {}, // Default CSR
+    '/admin/**': {}, // Default CSR
+
+    // API proxy configuration
+    '/api/nestjs/**': {
+      cors: true,
+      headers: { 'access-control-allow-credentials': 'true' }
+    }
+  }
+})
+```
+
+### Component API Usage Patterns
 ```typescript
 // 1. Define inline types in component
 interface ComponentApiTypes {
@@ -372,11 +585,72 @@ const updateProfile = async (updates: ComponentApiTypes['UpdateProfileRequest'])
 }
 ```
 
-### SSR Considerations
-- Server-side requests automatically include credentials
-- Private backend URLs resolved on server only
-- Client hydration preserves auth state
-- No secrets exposed in client bundles
+### Authentication Integration Patterns
+
+#### Automatic Token Management
+```typescript
+// All API calls automatically include authentication
+const { data } = await useGet<UserData>('protected/resource')
+// ↑ Automatically includes: Authorization: Bearer <token>
+
+// Skip authentication for public endpoints
+const { data } = await useGet<PublicData>('public/content', {}, {
+  skipAuth: true
+})
+
+// Skip CSRF for specific requests (mobile clients)
+const { data } = await usePost<Result>('api/action', payload, {
+  skipCsrf: true
+})
+```
+
+#### Token Refresh Handling
+```typescript
+// Automatic token refresh on 401 responses
+const authStore = useAuthStore()
+
+// API call with expired token
+const { data, error } = await useGet<UserData>('auth/profile')
+
+// If 401 received:
+// 1. authStore.refreshToken() automatically called
+// 2. New token stored in memory
+// 3. User prompted to retry the request manually
+// 4. If refresh fails, redirected to login
+
+if (data.value?.error && isAuthError(data.value.error)) {
+  // Handle authentication failure
+  await navigateTo('/login')
+}
+```
+
+### Environment-Specific Usage
+
+#### Development vs Production
+```typescript
+// Static resource access with environment detection
+const config = useRuntimeConfig()
+
+const getResourceUrl = (path: string) => {
+  switch (config.public.NUXT_APP_ENVIRONMENT) {
+    case 'production':
+      return `${config.public.NUXT_CDN_BASE_URL}/data/${path}`
+    default:
+      return `/api/proxy/${path}` // Development proxy
+  }
+}
+
+// Usage in component
+const videoSrc = getResourceUrl('videos/demo.mp4')
+```
+
+### SSR vs CSR Considerations
+- **SSR**: Server-side requests automatically include HttpOnly cookies
+- **CSR**: Client-side requests use JWT tokens from memory/localStorage
+- **Hybrid**: Initial SSR load with cookie auth, subsequent CSR calls with JWT
+- **Security**: Private backend URLs resolved on server only
+- **Performance**: SSR provides immediate content, CSR enables dynamic updates
+- **SEO**: SSR pages fully indexed, CSR pages require additional meta handling
 
 ## Performance Optimizations
 
