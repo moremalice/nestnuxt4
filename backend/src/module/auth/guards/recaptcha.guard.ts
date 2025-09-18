@@ -79,10 +79,10 @@ export class RecaptchaGuard implements CanActivate {
 
   private extractRecaptchaToken(request: Request): string | undefined {
     // Body에서 g-recaptcha-response 또는 recaptchaToken 필드 찾기
-    const body = request.body || {};
-    return (
-      body['g-recaptcha-response'] || body['recaptchaToken'] || body['token']
-    );
+    const body = (request.body as Record<string, unknown>) || {};
+    const token =
+      body['g-recaptcha-response'] || body['recaptchaToken'] || body['token'];
+    return typeof token === 'string' ? token : undefined;
   }
 
   private extractClientIp(request: Request): string | undefined {

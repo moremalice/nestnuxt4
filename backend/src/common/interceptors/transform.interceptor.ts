@@ -25,7 +25,7 @@ export class TransformInterceptor<T>
     next: CallHandler,
   ): Observable<SuccessResponse<T>> {
     return next.handle().pipe(
-      map((data) => {
+      map((data: T) => {
         const response: SuccessResponse<T> = {
           status: 'success',
           data,

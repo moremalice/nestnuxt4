@@ -1,16 +1,12 @@
 // backend/src/module/community/dto/notice.dto.ts
 import {
-  IsNotEmpty,
   IsOptional,
   IsString,
   IsInt,
-  Matches,
   MaxLength,
-  MinLength,
   Min,
   Max,
   IsDefined,
-  IsEnum,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 

@@ -8,7 +8,7 @@ export class OptionalJwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, _info: any, _context: ExecutionContext) {
+  handleRequest(err: any, user: any): any {
     // 선택적 인증: 토큰이 없거나 유효하지 않아도 통과시키되, user는 undefined로 설정
     if (err || !user) {
       return null;

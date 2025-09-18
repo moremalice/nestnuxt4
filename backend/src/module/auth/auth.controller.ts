@@ -76,7 +76,6 @@ export class AuthController {
   @ApiResponse({ status: 429, description: '너무 많은 시도' })
   async register(
     @Body() registerDto: RegisterDto,
-    @Req() _request: Request & { recaptchaResult?: any },
   ): Promise<RegisterResponseDto> {
     const result = await this.authService.register(registerDto);
     // 회원가입 성공 시 생성된 사용자 정보 반환
@@ -184,12 +183,12 @@ export class AuthController {
   @ApiResponse({ status: 401, description: '만료된 Refresh Token' })
   @ApiResponse({ status: 403, description: 'CSRF Token 오류 (웹 전용)' })
   @ApiResponse({ status: 429, description: '너무 많은 시도' })
-  async refresh(
+  refresh(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
     @GetClientType() clientType: ClientType,
-  ): Promise<RefreshResponseDto> {
-    const result = await this.authService.refresh(request.user, clientType);
+  ): RefreshResponseDto {
+    const result = this.authService.refresh(request.user, clientType);
 
     // 모바일 클라이언트: 새로운 refresh token을 응답 본문에 반환
     if (clientType === ClientType.MOBILE) {
@@ -245,13 +244,13 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: '인증 실패' })
   @ApiResponse({ status: 403, description: 'CSRF 토큰 오류 (웹 전용)' })
-  async logout(
+  logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
     @GetClientType() clientType: ClientType,
-  ): Promise<LogoutResponseDto> {
+  ): LogoutResponseDto {
     // 서비스에서 로그아웃 응답 받기 (모바일 전용 또는 void)
-    const result = await this.authService.logout(request.user.idx, clientType);
+    const result = this.authService.logout(request.user.idx, clientType);
 
     // refresh token 쿠키 항상 삭제 (웹 클라이언트용)
     this.authService.clearRefreshTokenCookie(response);
@@ -280,7 +279,8 @@ export class AuthController {
   getProfile(@Req() request: AuthenticatedRequest): {
     user: ProfileResponseDto;
   } {
-    const { password: _password, ...userProfile } = request.user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userProfile } = request.user;
     return {
       user: userProfile,
     };
@@ -312,7 +312,7 @@ export class AuthController {
 
     const result = await recaptchaStrategy.validate(
       recaptchaDto.recaptchaToken,
-      request.ip || (request as any).connection?.remoteAddress,
+      request.ip || 'unknown',
       recaptchaDto.expectedAction,
     );
 

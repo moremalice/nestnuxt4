@@ -37,7 +37,7 @@ export class LoggingInterceptor implements NestInterceptor {
           const responseTime = Date.now() - now;
 
           this.logger.error(
-            `[${request.method}/${response.statusCode || 500}] ${request.url} +${responseTime}ms - Error: ${error.message}`,
+            `[${request.method}/${response.statusCode || 500}] ${request.url} +${responseTime}ms - Error: ${error instanceof Error ? error.message : String(error)}`,
           );
         },
       }),

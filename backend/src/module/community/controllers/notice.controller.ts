@@ -1,13 +1,5 @@
 // backend/src/module/community/controllers/notice.controller.ts
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Query,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,

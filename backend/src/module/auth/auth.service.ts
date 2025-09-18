@@ -135,7 +135,7 @@ export class AuthService {
         );
       }
 
-      const tokens = await this.generateTokens(user, clientType);
+      const tokens = this.generateTokens(user, clientType);
       // Stateless 모드: 데이터베이스 저장 필요 없음
 
       return {
@@ -159,12 +159,12 @@ export class AuthService {
     }
   }
 
-  async refresh(
+  refresh(
     user: User,
     clientType: ClientType = ClientType.WEB,
-  ): Promise<InternalRefreshResponse> {
+  ): InternalRefreshResponse {
     try {
-      const tokens = await this.generateTokens(user, clientType);
+      const tokens = this.generateTokens(user, clientType);
       // Stateless 모드: 데이터베이스 저장 필요 없음
 
       return {
@@ -176,7 +176,7 @@ export class AuthService {
           isActive: user.isActive,
         },
       };
-    } catch (_error) {
+    } catch {
       // 민감한 정보 없이 오류 로깅
       this.logger.error('Token refresh failed');
       throw new UnauthorizedException(
@@ -217,7 +217,7 @@ export class AuthService {
       return await this.userRepository.findOne({
         where: { email, isActive: true },
       });
-    } catch (_error) {
+    } catch {
       // 민감한 정보 없이 오류 로깅
       this.logger.error('User validation failed');
       return null;
@@ -229,8 +229,10 @@ export class AuthService {
     clientType: ClientType = ClientType.WEB,
   ): { accessToken: string; refreshToken: string } {
     const now = Math.floor(Date.now() / 1000);
-    const issuer = this.configService.get('JWT_ISSUER', 'nest-nuxt-app');
-    const audience = this.configService.get('JWT_AUDIENCE', 'nest-nuxt-app');
+    const issuer =
+      this.configService.get<string>('JWT_ISSUER') || 'nest-nuxt-app';
+    const audience =
+      this.configService.get<string>('JWT_AUDIENCE') || 'nest-nuxt-app';
 
     const accessPayload: JwtPayload = {
       sub: user.idx,

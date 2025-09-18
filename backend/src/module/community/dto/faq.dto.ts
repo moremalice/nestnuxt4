@@ -1,6 +1,5 @@
 // backend/src/module/community/dto/faq.dto.ts
-import { IsOptional, IsString, IsNumber, Min, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsString } from 'class-validator';
 
 export class GetFaqListDto {
   @IsOptional()

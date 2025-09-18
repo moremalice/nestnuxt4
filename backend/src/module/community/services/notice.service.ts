@@ -116,7 +116,7 @@ export class NoticeService {
 
     try {
       const result = await queryBuilder.getRawOne();
-      return parseInt(result.cnt) || 0;
+      return parseInt(String(result?.cnt || 0)) || 0;
     } catch (error) {
       console.error('Notice count query error:', error);
       throw new BadRequestException(
@@ -131,9 +131,9 @@ export class NoticeService {
     const fileDomain = this.configService.get<string>('PIKI_DOMAIN');
     const fileDataPath = this.configService.get<string>('FILE_DATA_PATH');
 
-    let notice: any;
-    let prevNotice: any;
-    let nextNotice: any;
+    let notice: any = null;
+    let prevNotice: any = null;
+    let nextNotice: any = null;
 
     // 현재 공지사항 조회
     try {
@@ -187,7 +187,7 @@ export class NoticeService {
 
     // 이전/다음 공지사항 조회를 병렬로 처리
     try {
-      [prevNotice, nextNotice] = await Promise.all([
+      const [prevResult, nextResult] = await Promise.all([
         // 이전 공지사항 조회 (현재 글보다 작은 idx 중 가장 큰 값)
         this.noticeRepository
           .createQueryBuilder('tbe')
@@ -218,6 +218,8 @@ export class NoticeService {
           .limit(1)
           .getRawOne(),
       ]);
+      prevNotice = prevResult;
+      nextNotice = nextResult;
     } catch (error) {
       console.error('Previous/Next notice query error:', error);
       prevNotice = null;
