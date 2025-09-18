@@ -11,30 +11,6 @@ export default defineNuxtConfig({
         payloadExtraction: false
     },
 
-    // 빌드 재현성을 위한 Vite 설정
-    vite: {
-        build: {
-            // 결정론적 청크 해시 생성
-            rollupOptions: {
-                output: {
-                    // 빌드 ID 기반 일관된 청크명
-                    chunkFileNames: () => {
-                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
-                        return `chunks/[name]-${buildId.slice(0, 8)}.js`
-                    },
-                    entryFileNames: () => {
-                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
-                        return `entry/[name]-${buildId.slice(0, 8)}.js`
-                    },
-                    assetFileNames: () => {
-                        const buildId = process.env.NUXT_BUILD_ID || 'dev'
-                        return `assets/[name]-${buildId.slice(0, 8)}[extname]`
-                    }
-                }
-            }
-        }
-    },
-
     devtools: {
         enabled: process.env.NUXT_PUBLIC_APP_ENV !== 'production',
         timeline: {
@@ -198,10 +174,6 @@ export default defineNuxtConfig({
         '/blog/**': {
             ssr: true,
             headers: { 'cache-control': 's-maxage=3600' }
-        },
-        '/policy/**': {
-            ssr: true,
-            prerender: true
         },
 
         // === 나머지 모든 페이지는 기본값(CSR) 사용 ===
