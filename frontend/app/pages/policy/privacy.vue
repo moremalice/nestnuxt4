@@ -32,7 +32,7 @@ const dynamicMinHeight = computed(() => {
   return 'auto'
 })
 
-// 개인정보처리방침 상세 조회 (새로운 usePost 사용)
+// 개인정보처리방침 상세 조회
 const selectPrivacy = async (privacyIdx: number) => {
   const { data } = await usePost<PrivacyData>('policy/getPrivacyDetail', {
     idx: Number(privacyIdx),
@@ -52,7 +52,7 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-// 개인정보처리방침 목록 조회 (새로운 usePost 사용)
+// 개인정보처리방침 목록 조회
 const loadPrivacyList = async () => {
   const { data } = await usePost<PrivacyData[]>('policy/getPrivacyList', {
     lang: locale.value,
