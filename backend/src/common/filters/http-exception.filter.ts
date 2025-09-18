@@ -83,6 +83,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         name: exceptionName,
         message: message,
       },
+      statusCode: status,
     };
 
     this.logger.error(

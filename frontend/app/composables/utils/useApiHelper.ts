@@ -14,6 +14,7 @@ export interface ApiError {
     message: string
     fields?: Record<string, string[]>
   }
+  statusCode?: number
 }
 
 export type ApiResponse<T = unknown> = ApiSuccess<T> | ApiError
@@ -61,14 +62,18 @@ export function normalizeError(err: any): ApiResult<never>['error'] {
   // 백엔드 표준 에러
   if (err?.data?.status === 'error' && err?.data?.data) {
     const errorData = err.data.data
+    const statusCode = err.data.statusCode
     return {
       code: errorData.name || 'UnknownError',
       message: errorData.message || 'An error occurred',
-      details: errorData.fields ? { fields: errorData.fields } : undefined
+      details: {
+        ...(errorData.fields && { fields: errorData.fields }),
+        ...(statusCode && { statusCode })
+      }
     }
   }
 
-  // HTTP 상태 기반 에러
+  // HTTP 상태 기반 에러 (비표준 에러 대응)
   const status = err?.statusCode || err?.status
   if (status) {
     const statusMessages: Record<number, string> = {
@@ -144,7 +149,10 @@ export function transformToApiResult<T>(response: ApiResponse<T> | null | undefi
       error: {
         code: response.data.name,
         message: response.data.message,
-        details: response.data.fields ? { fields: response.data.fields } : undefined
+        details: {
+          ...(response.data.fields && { fields: response.data.fields }),
+          ...(response.statusCode && { statusCode: response.statusCode })
+        }
       }
     }
   }
@@ -165,7 +173,7 @@ export function isCsrfError(error: ApiResult<any>['error']): boolean {
   if (!error) return false
 
   return error.code === 'CSRF_ERROR' ||
-         error.code === 'HTTP_403' ||
+         error.code === 'ForbiddenException' ||
          error.message.toLowerCase().includes('csrf')
 }
 
@@ -173,7 +181,6 @@ export function isAuthError(error: ApiResult<any>['error']): boolean {
   if (!error) return false
 
   return error.code === 'UnauthorizedException' ||
-         error.code === 'HTTP_401' ||
          error.message.toLowerCase().includes('unauthorized') ||
          error.message.toLowerCase().includes('authentication')
 }
@@ -182,7 +189,7 @@ export function isValidationError(error: ApiResult<any>['error']): boolean {
   if (!error) return false
 
   return error.code === 'ValidationError' ||
-         error.code === 'HTTP_422' ||
+         error.code === 'BadRequestException' ||
          (error.details !== undefined && 'fields' in error.details)
 }
 
@@ -206,12 +213,3 @@ export function buildQueryString(params: Record<string, any>): string {
   return searchParams.toString()
 }
 
-// ===== 레거시 호환성 =====
-
-export function handleApiError(errorData: { name?: string; code?: string; message: string } | { code: string; message: string; details?: Record<string, any> }) {
-  const name = 'name' in errorData ? errorData.name : errorData.code
-  console.error('API Error:', {
-    errorName: name,
-    errorMessage: errorData.message
-  })
-}

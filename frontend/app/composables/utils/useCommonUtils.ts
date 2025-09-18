@@ -5,8 +5,6 @@ type DateInput = number | string | Date | null | undefined
 // Loading functions import
 const { showLoading, hideLoading } = useLoadingUI()
 
-// API helper functions import
-import { handleApiError } from './useApiHelper'
 
 const isNumeric = (v: string) => /^[0-9]+$/.test(v.trim())
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -179,12 +177,11 @@ export const backendFileDownload = async (
 
             return { status: 'success' };
         } else if (data.value?.error) {
-            const errorData = { name: data.value.error.code, message: data.value.error.message };
-            handleApiError(errorData);
+            console.error('Download URL Error:', data.value.error.code, data.value.error.message);
 
             return {
                 status: 'error',
-                message: errorData.message || 'Failed to get download URL'
+                message: data.value.error.message || 'Failed to get download URL'
             };
         } else {
             return {
@@ -194,16 +191,12 @@ export const backendFileDownload = async (
         }
 
     } catch (error: any) {
-        const errorData = {
-            name: 'FileDownloadError',
-            message: error.message || 'An error occurred during file download.'
-        };
-
-        handleApiError(errorData);
+        const errorMessage = error.message || 'An error occurred during file download.';
+        console.error('File Download Error:', errorMessage);
 
         return {
             status: 'error',
-            message: errorData.message
+            message: errorMessage
         };
     }
 };
