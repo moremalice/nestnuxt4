@@ -56,7 +56,7 @@ export default defineNuxtConfig({
     ],
 
     site: {
-        url: process.env.NUXT_SITE_URL!,
+        url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
         name: 'Pikitalk',
         indexable: process.env.NUXT_PUBLIC_APP_ENV === 'production' || process.env.NUXT_SITEMAP_PREVIEW === '1'
     },
@@ -201,19 +201,21 @@ export default defineNuxtConfig({
 
     runtimeConfig: {
         // ======== Server-Only (Private) ========
-        // Real backend API URL - NOT exposed to client
+        // Backend API URL - Hidden from client bundles for security
         NEST_BACKEND_BASE_URL: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
 
         // ======== Client-Exposed (Public) ========
-        // Safe for client bundle exposure
+        // Variables safe for client-side exposure
         public: {
+            // Application environment identifier
             NUXT_APP_ENVIRONMENT: process.env.NUXT_PUBLIC_APP_ENV || 'local',
-            // Proxy path only (hides real backend URL)
+            // API proxy path (hides real backend URL from client)
             NUXT_API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
-            // Site URL for SEO, canonical, meta tags
+            // Site URL for SEO, canonical URLs, and meta tags
             NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-            // File server URL for downloads, streaming, static resources (/data/ paths)
-            NUXT_CDN_BASE_URL: process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com',
+            // CDN/File server URL for static resources and downloads
+            NUXT_CDN_BASE_URL: process.env.NUXT_PUBLIC_CDN_BASE || '/api/proxy',
+            // reCAPTCHA site key for client-side verification
             NUXT_RECAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
         }
     }
