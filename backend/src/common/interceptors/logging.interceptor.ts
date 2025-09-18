@@ -18,9 +18,6 @@ export class LoggingInterceptor implements NestInterceptor {
   constructor(private readonly configService: ConfigService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'local');
-    const isDev = nodeEnv !== 'production';
-
     const ctx = context.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();

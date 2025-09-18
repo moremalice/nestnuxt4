@@ -3,7 +3,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { expectSuccessResponse, expectErrorResponse, CsrfTokenData, CsrfStatusData } from './test-helpers';
+import {
+  expectSuccessResponse,
+  expectErrorResponse,
+  CsrfTokenData,
+  CsrfStatusData,
+} from './test-helpers';
 
 describe('Security Module (e2e)', () => {
   let app: INestApplication;
@@ -36,7 +41,9 @@ describe('Security Module (e2e)', () => {
       // Check that csrf-sid cookie is set
       const cookies = response.headers['set-cookie'];
       expect(cookies).toBeDefined();
-      expect(cookies.some((cookie: string) => cookie.includes('csrf-sid'))).toBe(true);
+      expect(
+        cookies.some((cookie: string) => cookie.includes('csrf-sid')),
+      ).toBe(true);
     });
 
     it('should generate CSRF token with existing session', async () => {
@@ -46,7 +53,9 @@ describe('Security Module (e2e)', () => {
         .expect(200);
 
       const cookies = firstResponse.headers['set-cookie'];
-      const csrfCookie = cookies.find((cookie: string) => cookie.includes('csrf-sid'));
+      const csrfCookie = cookies.find((cookie: string) =>
+        cookie.includes('csrf-sid'),
+      );
 
       // Second request with existing session
       const response = await request(app.getHttpServer())
@@ -110,7 +119,9 @@ describe('Security Module (e2e)', () => {
       });
 
       const cookies = tokenResponse.headers['set-cookie'];
-      sessionCookie = cookies.find((cookie: string) => cookie.includes('csrf-sid'));
+      sessionCookie = cookies.find((cookie: string) =>
+        cookie.includes('csrf-sid'),
+      );
     });
 
     it('should allow POST request with valid CSRF token', async () => {
@@ -156,7 +167,7 @@ describe('Security Module (e2e)', () => {
     it('should handle CSRF service errors gracefully', async () => {
       // This test verifies that the application doesn't crash on CSRF errors
       // and maintains the standard error response format
-      
+
       // Try to make a request that might trigger CSRF service errors
       const response = await request(app.getHttpServer())
         .get('/csrf/token')

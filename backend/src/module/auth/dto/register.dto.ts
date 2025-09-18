@@ -18,7 +18,7 @@ export class RegisterDto {
   @ApiProperty({
     example: '03AGdBq26BxiyKJH8slM4pqfZNzgSo1sSKP6rJ8F...',
     description: 'reCAPTCHA response token',
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()

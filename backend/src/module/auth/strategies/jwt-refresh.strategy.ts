@@ -57,11 +57,17 @@ export class JwtRefreshStrategy extends PassportStrategy(
     // JWT 서명 검증은 passport-jwt에서 이미 수행됨
 
     // 선택사항: 보안 강화를 위한 추가 클레임 검증
-    if (payload.iss && payload.iss !== this.configService.get('JWT_ISSUER', 'nest-nuxt-app')) {
+    if (
+      payload.iss &&
+      payload.iss !== this.configService.get('JWT_ISSUER', 'nest-nuxt-app')
+    ) {
       throw new UnauthorizedException('Invalid token issuer');
     }
 
-    if (payload.aud && payload.aud !== this.configService.get('JWT_AUDIENCE', 'nest-nuxt-app')) {
+    if (
+      payload.aud &&
+      payload.aud !== this.configService.get('JWT_AUDIENCE', 'nest-nuxt-app')
+    ) {
       throw new UnauthorizedException('Invalid token audience');
     }
 

@@ -15,26 +15,26 @@ import {
   CsrfTokenData,
   CsrfStatusData,
   generateTestUser,
-  generateWebUserAgent
+  generateWebUserAgent,
 } from './test-helpers';
 
 describe('CSRF Mobile Client Bypass (e2e)', () => {
   let app: INestApplication;
-  
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Apply the same middleware setup as in main.ts
     const configService = app.get(ConfigService);
     const csrfService = app.get(CsrfService);
-    
+
     // Cookie parser is needed for CSRF
     app.use(require('cookie-parser')());
-    
+
     // CSRF protection with mobile client detection
     app.use((req: any, res: any, next: any) => {
       // Skip CSRF for mobile clients
@@ -42,12 +42,12 @@ describe('CSRF Mobile Client Bypass (e2e)', () => {
         res.setHeader('X-CSRF-Skipped', 'mobile-client');
         return next();
       }
-      
+
       // Apply CSRF protection for web clients
       const protection = csrfService.protection;
       protection(req, res, next);
     });
-    
+
     await app.init();
   });
 
@@ -147,7 +147,7 @@ describe('CSRF Mobile Client Bypass (e2e)', () => {
         .set('User-Agent', generateWebUserAgent())
         .send(webUser)
         .expect(403); // CSRF validation should fail
-      
+
       expectErrorResponse(failResponse.body, 'ForbiddenError', 'csrf');
 
       // Try with CSRF token - should succeed
@@ -170,7 +170,10 @@ describe('CSRF Mobile Client Bypass (e2e)', () => {
       // Mobile client with browser-like user agent but X-Client-Type header
       const response = await request(app.getHttpServer())
         .post('/auth/login')
-        .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)')
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)',
+        )
         .set('X-Client-Type', 'mobile') // This takes priority
         .send(testUser)
         .expect(200);

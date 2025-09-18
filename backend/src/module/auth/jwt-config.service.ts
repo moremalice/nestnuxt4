@@ -53,14 +53,14 @@ export class JwtConfigService {
   }
 
   getAccessExpiresIn(clientType: ClientType): string {
-    return clientType === ClientType.MOBILE 
-      ? this.mobileAccessExpiresIn 
+    return clientType === ClientType.MOBILE
+      ? this.mobileAccessExpiresIn
       : this.accessExpiresIn;
   }
 
   getRefreshExpiresIn(clientType: ClientType): string {
-    return clientType === ClientType.MOBILE 
-      ? this.mobileRefreshExpiresIn 
+    return clientType === ClientType.MOBILE
+      ? this.mobileRefreshExpiresIn
       : this.refreshExpiresIn;
   }
 }

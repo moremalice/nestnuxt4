@@ -9,27 +9,27 @@ import {
   expectSuccessResponse,
   CsrfTokenData,
   CsrfStatusData,
-  generateWebUserAgent
+  generateWebUserAgent,
 } from './test-helpers';
 
 describe('CSRF Token (e2e)', () => {
   let app: INestApplication;
-  
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Setup cookie parser and CSRF middleware like in main.ts
     app.use(cookieParser());
-    
+
     // Get CSRF service and apply middleware
     const csrfService = app.get(CsrfService);
     const smartCsrfMiddleware = new SmartCsrfMiddleware(csrfService);
     app.use(smartCsrfMiddleware.use.bind(smartCsrfMiddleware));
-    
+
     await app.init();
   });
 
@@ -45,20 +45,20 @@ describe('CSRF Token (e2e)', () => {
 
     console.log('CSRF Token Response:', JSON.stringify(response.body, null, 2));
     console.log('Response Headers:', response.headers);
-    
+
     expectSuccessResponse<CsrfTokenData>(response.body, (data) => {
       expect(data).toHaveProperty('csrfToken');
       expect(typeof data.csrfToken).toBe('string');
       expect(data.csrfToken.length).toBeGreaterThan(0);
       expect(data.csrfToken).toMatch(/^[a-f0-9]{64}\.[a-f0-9]+$/); // CSRF token format validation
     });
-    
+
     // Check that CSRF session cookie is set
     expect(response.headers['set-cookie']).toBeDefined();
-    const cookies = Array.isArray(response.headers['set-cookie']) 
-      ? response.headers['set-cookie'] 
+    const cookies = Array.isArray(response.headers['set-cookie'])
+      ? response.headers['set-cookie']
       : [response.headers['set-cookie']];
-    expect(cookies.some(cookie => cookie.includes('csrf-sid'))).toBe(true);
+    expect(cookies.some((cookie) => cookie.includes('csrf-sid'))).toBe(true);
   });
 
   it('should generate CSRF status', async () => {
@@ -66,8 +66,11 @@ describe('CSRF Token (e2e)', () => {
       .get('/csrf/status')
       .expect(200);
 
-    console.log('CSRF Status Response:', JSON.stringify(response.body, null, 2));
-    
+    console.log(
+      'CSRF Status Response:',
+      JSON.stringify(response.body, null, 2),
+    );
+
     expectSuccessResponse<CsrfStatusData>(response.body, (data) => {
       expect(data).toHaveProperty('enabled');
       expect(data).toHaveProperty('failOpen');

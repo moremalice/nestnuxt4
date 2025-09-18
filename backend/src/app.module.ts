@@ -53,9 +53,9 @@ import { databaseConfigs, i18nConfigs } from './config';
       inject: [ConfigService],
     }),
     TypeOrmModule.forRootAsync({
-        name: databaseConfigs.test.name,
-        useFactory: databaseConfigs.test.factory,
-        inject: [ConfigService],
+      name: databaseConfigs.test.name,
+      useFactory: databaseConfigs.test.factory,
+      inject: [ConfigService],
     }),
 
     CommonModule,

@@ -7,8 +7,8 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
 
 export interface ErrorData {
   name: string;
@@ -30,7 +30,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest();
+    const request = ctx.getRequest<Request>();
 
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'local');
     const isDev = nodeEnv !== 'production';
@@ -48,7 +48,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
       } else if (exceptionResponse && typeof exceptionResponse === 'object') {
-        const resObj = exceptionResponse as any;
+        const resObj = exceptionResponse as Record<string, any>;
         const raw = resObj.message ?? resObj.error ?? message;
 
         if (Array.isArray(raw)) {

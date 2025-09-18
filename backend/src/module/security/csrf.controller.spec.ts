@@ -56,10 +56,12 @@ describe('CsrfController', () => {
         cookie: jest.fn(),
       } as any;
 
-      mockConfigService.get.mockImplementation((key: string, defaultValue?: any) => {
-        if (key === 'NODE_ENV') return 'local';
-        return defaultValue;
-      });
+      mockConfigService.get.mockImplementation(
+        (key: string, defaultValue?: any) => {
+          if (key === 'NODE_ENV') return 'local';
+          return defaultValue;
+        },
+      );
     });
 
     it('should generate CSRF token successfully', async () => {
@@ -116,10 +118,12 @@ describe('CsrfController', () => {
     it('should use production cookie settings in production environment', async () => {
       const expectedToken = 'mock-csrf-token-123';
       mockCsrfService.generateToken.mockReturnValue(expectedToken);
-      mockConfigService.get.mockImplementation((key: string, defaultValue?: any) => {
-        if (key === 'NODE_ENV') return 'production';
-        return defaultValue;
-      });
+      mockConfigService.get.mockImplementation(
+        (key: string, defaultValue?: any) => {
+          if (key === 'NODE_ENV') return 'production';
+          return defaultValue;
+        },
+      );
 
       await controller.getCsrfToken(
         mockRequest as Request,

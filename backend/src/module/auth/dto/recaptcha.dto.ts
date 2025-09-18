@@ -1,82 +1,82 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator'
-import { ApiProperty } from '@nestjs/swagger'
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class RecaptchaValidationDto {
   @ApiProperty({
     description: 'reCAPTCHA response token',
-    example: '03AGdBq26BxiyKJH8slM4pqfZNzgSo1sSKP6rJ8F...'
+    example: '03AGdBq26BxiyKJH8slM4pqfZNzgSo1sSKP6rJ8F...',
   })
   @IsString()
   @IsNotEmpty()
-  readonly recaptchaToken: string
+  readonly recaptchaToken: string;
 
   @ApiProperty({
     description: 'Expected action for validation',
     example: 'register',
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()
-  readonly expectedAction?: string
+  readonly expectedAction?: string;
 
   @ApiProperty({
     description: 'Client IP address',
     example: '192.168.1.1',
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()
-  readonly remoteIp?: string
+  readonly remoteIp?: string;
 }
 
 export class RecaptchaValidationResultDto {
   @ApiProperty({
     description: 'Validation result',
-    example: true
+    example: true,
   })
-  readonly isValid: boolean
+  readonly isValid: boolean;
 
   @ApiProperty({
     description: 'reCAPTCHA score (0.0 - 1.0)',
     example: 0.8,
-    required: false
+    required: false,
   })
-  readonly score?: number
+  readonly score?: number;
 
   @ApiProperty({
     description: 'Action that was validated',
     example: 'form_submit',
-    required: false
+    required: false,
   })
-  readonly action?: string
+  readonly action?: string;
 
   @ApiProperty({
     description: 'Hostname where validation occurred',
     example: 'localhost',
-    required: false
+    required: false,
   })
-  readonly hostname?: string
+  readonly hostname?: string;
 
   @ApiProperty({
     description: 'Validation message',
     example: 'reCAPTCHA validation successful',
-    required: false
+    required: false,
   })
-  readonly message?: string
+  readonly message?: string;
 }
 
 export class DemoFormSubmissionDto {
   @ApiProperty({
     description: 'Form submission success status',
-    example: true
+    example: true,
   })
-  readonly success: boolean
+  readonly success: boolean;
 
   @ApiProperty({
     description: 'Response message',
-    example: 'Form submitted successfully'
+    example: 'Form submitted successfully',
   })
-  readonly message: string
+  readonly message: string;
 
   @ApiProperty({
     description: 'Submitted form data with timestamp',
@@ -84,15 +84,15 @@ export class DemoFormSubmissionDto {
       name: 'John Doe',
       email: 'john@example.com',
       message: 'Hello world',
-      timestamp: '2024-01-01T00:00:00.000Z'
-    }
+      timestamp: '2024-01-01T00:00:00.000Z',
+    },
   })
-  readonly submittedData: any
+  readonly submittedData: any;
 
   @ApiProperty({
     description: 'reCAPTCHA validation result',
     type: RecaptchaValidationResultDto,
-    required: false
+    required: false,
   })
-  readonly recaptchaResult?: RecaptchaValidationResultDto | { message: string }
+  readonly recaptchaResult?: RecaptchaValidationResultDto | { message: string };
 }

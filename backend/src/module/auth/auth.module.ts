@@ -28,7 +28,21 @@ import { throttlerConfigs } from '../../config';
     TypeOrmModule.forFeature([User], 'test_user_db'),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, RecaptchaStrategy, RecaptchaGuard, JwtConfigService],
-  exports: [AuthService, JwtStrategy, RecaptchaStrategy, RecaptchaGuard, PassportModule, JwtConfigService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    RecaptchaStrategy,
+    RecaptchaGuard,
+    JwtConfigService,
+  ],
+  exports: [
+    AuthService,
+    JwtStrategy,
+    RecaptchaStrategy,
+    RecaptchaGuard,
+    PassportModule,
+    JwtConfigService,
+  ],
 })
 export class AuthModule {}

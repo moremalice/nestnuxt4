@@ -10,14 +10,14 @@ import {
   expectWebClientResponse,
   UserData,
   LoginResponseData,
-  RefreshResponseData
+  RefreshResponseData,
 } from './test-helpers';
 
 describe('Mobile Authentication (e2e)', () => {
   let app: INestApplication;
   let accessToken: string;
   let refreshToken: string | undefined;
-  
+
   const testUser = {
     email: `mobile.test.${Date.now()}@example.com`,
     password: 'TestPassword123!',
@@ -108,7 +108,7 @@ describe('Mobile Authentication (e2e)', () => {
   describe('Universal endpoints with X-Client-Type header', () => {
     let mobileAccessToken: string;
     let mobileRefreshToken: string | undefined;
-    
+
     const mobileUser = {
       email: `mobile.header.${Date.now()}@example.com`,
       password: 'TestPassword123!',
@@ -135,7 +135,7 @@ describe('Mobile Authentication (e2e)', () => {
         expect(data.user.email).toBe(mobileUser.email);
       });
       expectMobileClientResponse(response, true); // Should have CSRF skipped header
-      
+
       mobileAccessToken = response.body.data.accessToken;
       mobileRefreshToken = response.body.data.refreshToken;
     });
@@ -185,8 +185,9 @@ describe('Mobile Authentication (e2e)', () => {
     });
 
     it('should reject expired access token', async () => {
-      const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTYwMDAwMDAwMX0.invalid';
-      
+      const expiredToken =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTYwMDAwMDAwMX0.invalid';
+
       const response = await request(app.getHttpServer())
         .get('/auth/profile')
         .set('Authorization', `Bearer ${expiredToken}`)

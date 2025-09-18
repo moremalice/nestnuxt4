@@ -24,9 +24,6 @@ export class TransformInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<SuccessResponse<T>> {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'local');
-    const isDev = nodeEnv !== 'production';
-
     return next.handle().pipe(
       map((data) => {
         const response: SuccessResponse<T> = {

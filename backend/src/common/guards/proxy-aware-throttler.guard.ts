@@ -4,7 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Injectable()
 export class ProxyAwareThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected getTracker(req: Record<string, any>): string {
     return (Array.isArray(req.ips) && req.ips[0]) || req.ip || req.hostname;
   }
 }

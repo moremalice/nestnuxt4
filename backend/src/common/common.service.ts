@@ -16,7 +16,13 @@ export class CommonService {
 
   escapeLike(term: unknown, escapeChar: string = LIKE_ESCAPE_CHAR): string {
     const src =
-      typeof term === 'string' ? term : term == null ? '' : String(term);
+      typeof term === 'string'
+        ? term
+        : term == null
+          ? ''
+          : typeof term === 'number' || typeof term === 'boolean'
+            ? String(term)
+            : JSON.stringify(term);
     const re = new RegExp(`[${escapeForCharClass(escapeChar)}%_]`, 'g');
     return src.replace(re, `${escapeChar}$&`);
   }

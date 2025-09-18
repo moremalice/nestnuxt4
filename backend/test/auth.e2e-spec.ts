@@ -24,7 +24,7 @@ import {
   LoginResponseData,
   CsrfTokenData,
   generateTestUser,
-  generateWebUserAgent
+  generateWebUserAgent,
 } from './test-helpers';
 
 describe('Auth (e2e)', () => {
@@ -45,15 +45,15 @@ describe('Auth (e2e)', () => {
     process.env.NODE_ENV = 'test';
     process.env.CSRF_SECRET = 'test-secret-key-for-e2e-tests';
     process.env.CSRF_STRICT = 'false';
-    
+
     // Setup global filters and pipes like in main.ts
     const configService = app.get(ConfigService);
     app.useGlobalPipes(new CustomValidationPipe());
     app.useGlobalFilters(new HttpExceptionFilter(configService));
-    
+
     // Setup cookie parser and CSRF middleware like in main.ts
     app.use(cookieParser());
-    
+
     // Get CSRF service and apply middleware
     const csrfService = app.get(CsrfService);
     const smartCsrfMiddleware = new SmartCsrfMiddleware(csrfService);
@@ -135,25 +135,36 @@ describe('Auth (e2e)', () => {
       // First, get CSRF token
       const tokenResponse = await request(app.getHttpServer())
         .get('/csrf/token')
-        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        )
         .expect(200);
 
       const csrfToken = tokenResponse.body.data.csrfToken;
       const cookies = tokenResponse.headers['set-cookie'];
-      
+
       // Format cookies properly for request
-      const cookieStr = Array.isArray(cookies) ? cookies.join('; ') : cookies || '';
+      const cookieStr = Array.isArray(cookies)
+        ? cookies.join('; ')
+        : cookies || '';
 
       // Register with CSRF token
       const response = await request(app.getHttpServer())
         .post('/auth/register')
-        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        )
         .set('X-CSRF-Token', csrfToken)
         .set('Cookie', cookieStr)
         .send(webUser)
         .expect(201);
 
-      console.log('Web Registration Response:', JSON.stringify(response.body, null, 2));
+      console.log(
+        'Web Registration Response:',
+        JSON.stringify(response.body, null, 2),
+      );
       expectSuccessResponse<UserData>(response.body, (data) => {
         expect(data).toHaveProperty('idx');
         expect(data).toHaveProperty('email');
@@ -200,9 +211,9 @@ describe('Auth (e2e)', () => {
       // Registration should NOT set cookies, only login does
       if (cookies) {
         const cookieArray = Array.isArray(cookies) ? cookies : [cookies];
-        expect(cookieArray.some((cookie: string) => 
-          cookie.includes('ref_token_')
-        )).toBe(false);
+        expect(
+          cookieArray.some((cookie: string) => cookie.includes('ref_token_')),
+        ).toBe(false);
       }
     });
 
@@ -252,7 +263,11 @@ describe('Auth (e2e)', () => {
         .send(shortPasswordDto)
         .expect(400)
         .expect((res) => {
-          expectErrorResponse(res.body, 'BadRequestException', 'Password must be at least');
+          expectErrorResponse(
+            res.body,
+            'BadRequestException',
+            'Password must be at least',
+          );
         });
     });
 
@@ -311,7 +326,7 @@ describe('Auth (e2e)', () => {
     beforeEach(async () => {
       // Clean up and create test user for login tests
       await userRepository.delete({ email: loginDto.email });
-      
+
       // Register a user first for login tests
       await request(app.getHttpServer())
         .post('/auth/register')
@@ -334,9 +349,11 @@ describe('Auth (e2e)', () => {
       expectSuccessResponse<CsrfTokenData>(tokenResponse.body);
       const csrfToken = tokenResponse.body.data.csrfToken;
       const csrfCookies = tokenResponse.headers['set-cookie'];
-      
+
       // Format cookies properly for request
-      const cookieStr = Array.isArray(csrfCookies) ? csrfCookies.join('; ') : csrfCookies || '';
+      const cookieStr = Array.isArray(csrfCookies)
+        ? csrfCookies.join('; ')
+        : csrfCookies || '';
 
       const response = await request(app.getHttpServer())
         .post('/auth/login')
