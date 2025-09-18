@@ -137,7 +137,7 @@ const handleSubmit = async () => {
     const registerData: RegisterData = {
       email: formData.value.email,
       password: formData.value.password,
-      recaptchaToken: validToken
+      recaptchaToken: validToken || undefined
     }
 
     const success = await authStore.register(registerData)

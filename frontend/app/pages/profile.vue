@@ -135,7 +135,7 @@ onMounted(async () => {
           <p class="error-message">인증 정보를 확인할 수 없습니다.</p>
           <button
             class="btn btn-primary"
-            @click="$router.push('/login')">
+            @click="router.push('/login')">
             로그인하기
           </button>
         </div>

@@ -18,6 +18,7 @@ interface NoticeDetailData {
 }
 
 const { locale, t: $t } = useI18n()
+const { formatDateTimeDash } = useCommonUtils()
 const route = useRoute()
 
 const idx = Number(route.params.idx ?? '')

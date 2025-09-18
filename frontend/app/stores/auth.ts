@@ -317,7 +317,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // 토큰 갱신 요청 (무한 루프 방지를 위해 skipTokenRefresh 설정)
       const { data, error } = await useNuxtPost<RefreshResponse>('auth/refresh', {}, {
-        skipTokenRefresh: true
+        context: { skipTokenRefresh: true }
       })
 
       if (!error.value && data.value?.status === 'success') {

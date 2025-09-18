@@ -10,7 +10,7 @@
 
     <article class="post-content">
       <p>이것은 블로그 포스트 예시 페이지입니다.</p>
-      <p>Slug: <code>{{ $route.params.slug }}</code></p>
+      <p>Slug: <code>{{ route.params.slug }}</code></p>
 
       <h2>동적 라우팅 테스트</h2>
       <p>이 페이지는 동적 라우팅을 통해 생성되며, 사이트맵에 자동으로 포함됩니다.</p>

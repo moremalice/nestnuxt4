@@ -2,12 +2,7 @@
 <script setup lang="ts">
 // Notice API response type
 interface NoticeListData {
-  notice_list: Array<{
-    idx: number
-    title: string
-    contents: string
-    reg_dt: string
-  }>
+  notice_list: NoticeItem[]
   notice_cnt: number
   offset: number
 }
@@ -21,6 +16,7 @@ interface NoticeItem {
 }
 
 const { locale, t } = useI18n()
+const { formatDateDash } = useCommonUtils()
 const route = useRoute()
 const router = useRouter()
 

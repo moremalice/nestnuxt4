@@ -1,8 +1,7 @@
 // frontend/server/api/__sitemap__/urls.ts
-import { defineSitemapEventHandler } from '#imports'
 import { getAllSitemapUrls } from '~/shared/sitemap/urls'
 
-export default defineSitemapEventHandler(async (event) => {
+export default defineSitemapEventHandler(async (event: any) => {
     try {
         console.log('[Sitemap] Generating URLs...')
 

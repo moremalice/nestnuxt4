@@ -11,6 +11,7 @@ interface TermsData {
 }
 
 const { t, locale } = useI18n()
+const { formatTDate } = useCommonUtils()
 const isDropdownOpen = ref(false)
 const termsList = ref<TermsData[]>([])
 const selectedTerms = ref<TermsData | null>(null)

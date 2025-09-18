@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const { locale, setLocale, t } = useI18n()
+const { activeLayer, showToast, toastMessage, openLayer, closeLayer, copyToClipboard } = useCommonUI()
+const { handleLogoClick } = useHeaderFooterUI()
 
 const downloadPC = (platform: string) => {
   // PC 다운로드 로직

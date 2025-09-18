@@ -83,6 +83,55 @@ export const normalizeError = <T>(err: any): ApiResponse<T> => {
   }
 }
 
+// API 응답 처리 결과 타입
+export type ApiProcessResult<T> = {
+  success: true
+  data: T
+} | {
+  success: false
+  error: ErrorData
+}
+
+// API 응답 통합 처리 함수
+export const processApiResponse = <T>(
+  data: ApiResponse<T> | null | undefined,
+  error: any,
+  fallbackErrorName: string
+): ApiProcessResult<T> => {
+  // 성공 응답 처리
+  if (!error && data?.status === 'success') {
+    return {
+      success: true,
+      data: data.data
+    }
+  }
+
+  // 에러 응답 처리
+  let errorData: ErrorData
+
+  if (error) {
+    // useFetch의 error 객체 처리
+    errorData = error.data || {
+      name: fallbackErrorName,
+      message: error.message || 'Request failed'
+    }
+  } else if (data?.status === 'error') {
+    // API 에러 응답 처리
+    errorData = data.data
+  } else {
+    // 기타 경우 fallback
+    errorData = {
+      name: fallbackErrorName,
+      message: 'Unexpected error occurred'
+    }
+  }
+
+  return {
+    success: false,
+    error: errorData
+  }
+}
+
 // API 에러 핸들러 (로깅용)
 export const handleApiError = (errorData: ErrorData) => {
   console.error('API Error:', {
@@ -90,3 +139,12 @@ export const handleApiError = (errorData: ErrorData) => {
     errorMessage: errorData.message
   })
 }
+
+// 통합 useApiHelper 컴포저블
+export const useApiHelper = () => ({
+  processApiResponse,
+  handleApiError,
+  normalizeError,
+  isCsrfError,
+  isAuthError
+})

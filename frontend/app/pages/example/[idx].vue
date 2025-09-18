@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <h1>예시 동적 페이지</h1>
-    <p>페이지 ID: {{ $route.params.id }}</p>
+    <p>페이지 ID: {{ route.params.idx }}</p>
     <p>이 페이지는 동적 URL 사이트맵 테스트용입니다.</p>
 
     <div class="content">

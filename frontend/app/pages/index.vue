@@ -100,13 +100,15 @@ const downloadMac = async () => {
 const getDownloadUrl = async (ymlName: string) => {
   try {
     const ymlSrc = getYmlSrc(ymlName)
-    const response = await $fetch(ymlSrc)
-    const data = load(response)
+    const response = await $fetch(ymlSrc) as string
+    const data = load(response) as { files: Array<{ url: string }> }
 
-    const dmgFileNames = data.files.find((file: any) => file.url.endsWith('.dmg'))
-    const path = dmgFileNames.url
+    const dmgFileNames = data.files?.find((file: any) => file.url.endsWith('.dmg'))
+    const path = dmgFileNames?.url
 
-    await navigateTo(`${config.public.NUXT_CDN_BASE_URL}/data/${path}`, { external: true })
+    if (path) {
+      await navigateTo(`${config.public.NUXT_CDN_BASE_URL}/data/${path}`, { external: true })
+    }
   } catch (error) {
     console.error("YML data ", error)
   }

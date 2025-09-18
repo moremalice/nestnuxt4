@@ -345,5 +345,10 @@ export const useHeaderFooterUI = () => {
         scrollToTop,
         scrollToElement,
         handleLogoClick,
+        // 개별 export된 함수들도 포함
+        getMobileMenuOpenState,
+        getLanguageListOpenState,
+        hasActiveMenuItem,
+        isDesktopOrHasActiveMenuItem,
     }
 }

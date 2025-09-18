@@ -1,7 +1,17 @@
 <!-- components/HeaderComponent.vue -->
 <script setup lang="ts">
 const { locale, setLocale, t } = useI18n()
-setupHeaderUI()
+const {
+  getMobileMenuOpenState,
+  getLanguageListOpenState,
+  handleLanguageListToggle,
+  handleMobileMenuToggle,
+  handleMainMenuClick,
+  handleAnchorClick,
+  getSubItemLink,
+  hasActiveMenuItem,
+  isDesktopOrHasActiveMenuItem
+} = useHeaderFooterUI()
 
 // 메뉴 타입 정의
 interface MenuItem {
