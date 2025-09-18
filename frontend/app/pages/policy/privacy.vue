@@ -59,17 +59,16 @@ const loadPrivacyList = async () => {
     view_type: 'talk'
   })
 
-  const result = processApiResponse(data.value, error.value, 'PrivacyListError')
-  if (result.success) {
-    privacyList.value = result.data
-    if (result.data?.length > 0 && result.data[0]?.idx) {
-      await selectPrivacy(result.data[0].idx)
+  if (!error.value && data.value?.status === 'success') {
+    privacyList.value = data.value.data
+    if (data.value.data.length > 0) {
+      await selectPrivacy(data.value.data[0].idx)
     } else {
       selectedPrivacy.value = null
       selectedIndex.value = 0
     }
   } else {
-    handleApiError(result.error)
+    handleApiError(error.value?.data || data.value?.data)
   }
 }
 

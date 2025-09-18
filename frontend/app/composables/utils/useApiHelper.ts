@@ -93,7 +93,6 @@ export const handleApiError = (errorData: ErrorData) => {
 
 // 통합 useApiHelper 컴포저블
 export const useApiHelper = () => ({
-  processApiResponse,
   handleApiError,
   normalizeError,
   isCsrfError,
