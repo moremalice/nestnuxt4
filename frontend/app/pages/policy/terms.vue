@@ -33,17 +33,17 @@ const dynamicMinHeight = computed(() => {
 
 // Terms detail lookup
 const selectTerms = async (termsIdx: number) => {
-  const { data, error } = await useNuxtPost<TermsData>('policy/getTermsDetail', {
+  const { data } = await usePost<TermsData>('policy/getTermsDetail', {
     idx: Number(termsIdx),
     lang: locale.value
   })
 
-  if (!error.value && data.value?.status === 'success') {
+  if (data.value?.data) {
     selectedTerms.value = data.value.data
     selectedIndex.value = termsList.value.findIndex((term: TermsData) => term.idx === termsIdx)
     isDropdownOpen.value = false
-  } else {
-    handleApiError(error.value?.data || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
 
     selectedTerms.value = null
     selectedIndex.value = -1
@@ -57,21 +57,21 @@ const toggleDropdown = () => {
 
 // Terms list lookup
 const loadTermsList = async () => {
-  const { data, error } = await useNuxtPost<TermsData[]>('policy/getTermsList', {
+  const { data } = await usePost<TermsData[]>('policy/getTermsList', {
     lang: locale.value,
     view_type: 'talk'
   })
 
-  if (!error.value && data.value?.status === 'success') {
-    termsList.value = data.value.data
-    if (data.value.data.length > 0) {
+  if (data.value?.data) {
+    termsList.value = data.value.data || []
+    if (data.value.data && data.value.data.length > 0 && data.value.data[0]?.idx) {
       await selectTerms(data.value.data[0].idx)
     } else {
       selectedTerms.value = null
       selectedIndex.value = 0
     }
-  } else {
-    handleApiError(error.value || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
   }
 }
 

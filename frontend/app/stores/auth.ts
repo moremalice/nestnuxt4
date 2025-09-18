@@ -232,9 +232,9 @@ export const useAuthStore = defineStore('auth', () => {
   // 로그인
   const login = async (loginData: LoginData): Promise<boolean> => {
     try {
-      const { data, error } = await useNuxtPost<AuthResponse>('auth/login', loginData)
+      const { data } = await usePost<AuthResponse>('auth/login', loginData)
 
-      if (!error.value && data.value?.status === 'success') {
+      if (data.value?.data) {
         setAuth(data.value.data)
         return true
       }
@@ -248,8 +248,8 @@ export const useAuthStore = defineStore('auth', () => {
   // 회원가입
   const register = async (registerData: RegisterData): Promise<boolean> => {
     try {
-      const { data, error } = await useNuxtPost<RegisterResponseData>('auth/register', registerData)
-      return !error.value && data.value?.status === 'success'
+      const { data } = await usePost<RegisterResponseData>('auth/register', registerData)
+      return !!data.value?.data
     } catch (error) {
       return false
     }
@@ -260,7 +260,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // 토큰이 있을 때만 서버에 로그아웃 요청
       if (accessToken.value) {
-        await useNuxtPost<{}>('auth/logout', {})
+        await usePost<{}>('auth/logout', {})
       }
     } catch (error) {
       // 서버 에러 무시 (클라이언트 정리는 계속 진행)
@@ -316,11 +316,11 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       // 토큰 갱신 요청 (무한 루프 방지를 위해 skipTokenRefresh 설정)
-      const { data, error } = await useNuxtPost<RefreshResponse>('auth/refresh', {}, {
-        context: { skipTokenRefresh: true }
+      const { data } = await usePost<RefreshResponse>('auth/refresh', {}, {
+        skipAuth: true
       })
 
-      if (!error.value && data.value?.status === 'success') {
+      if (data.value?.data) {
         // 갱신 성공: 새 토큰과 사용자 정보 설정
         accessToken.value = data.value.data.accessToken
         user.value = data.value.data.user
@@ -360,17 +360,16 @@ export const useAuthStore = defineStore('auth', () => {
         return null
       }
 
-      const { data, error } = await useNuxtGet<{ user: User }>('auth/profile')
+      const { data } = await useGet<{ user: User }>('auth/profile')
 
-      if (!error.value && data.value?.status === 'success') {
+      if (data.value?.data) {
         user.value = data.value.data.user
         return data.value.data.user
       }
 
       // 인증 에러인 경우 로그아웃 처리
-      if (error.value || data.value?.status === 'error') {
-        const errorData = error.value?.data || data.value?.data
-        const errorName = errorData?.name?.toLowerCase() || ''
+      if (data.value?.error) {
+        const errorName = data.value.error.code?.toLowerCase() || ''
         if (errorName.includes('unauthorized') || errorName.includes('authentication')) {
           clearAuth()
         }

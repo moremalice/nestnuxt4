@@ -1,100 +1,217 @@
-// composables/utils/apiHelpers.ts
+// frontend/app/composables/utils/useApiHelper.ts
 
-// API 응답 타입 정의
-export interface ApiSuccessResponse<T = any> {
+// ===== 타입 정의 =====
+
+export interface ApiSuccess<T = unknown> {
   status: 'success'
   data: T
 }
 
-export interface ErrorData {
-  name: string
-  message: string
-}
-
-export interface ApiErrorResponse {
+export interface ApiError {
   status: 'error'
-  data: ErrorData
+  data: {
+    name: string
+    message: string
+    fields?: Record<string, string[]>
+  }
 }
 
-export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse
+export type ApiResponse<T = unknown> = ApiSuccess<T> | ApiError
 
-// Context 플래그 타입
-export interface ApiContextFlags {
-  skipTokenRefresh?: boolean
+export interface ApiResult<T = unknown> {
+  data: T | null
+  error: {
+    code: string
+    message: string
+    details?: Record<string, any>
+  } | null
+}
+
+export interface ApiOptions {
+  immediate?: boolean
+  lazy?: boolean
+  server?: boolean
+  key?: string
+  transform?: (data: any) => any
+  default?: () => any
+  watch?: any[]
+  timeout?: number
+  retry?: number | false
+  retryDelay?: number
+  dedupe?: 'cancel' | 'defer'
+  skipAuth?: boolean
   skipCsrf?: boolean
-  skipCsrfRetry?: boolean
+  withLoading?: boolean
+  signal?: AbortSignal
 }
 
-// 에러 판별 유틸리티
-export const isCsrfError = (err: any): boolean => {
-  // Response data structure 확인
+// ===== 타입 가드 =====
+
+export function isApiSuccess<T>(response: ApiResponse<T>): response is ApiSuccess<T> {
+  return response?.status === 'success'
+}
+
+export function isApiError(response: ApiResponse<any>): response is ApiError {
+  return response?.status === 'error'
+}
+
+// ===== 에러 정규화 =====
+
+export function normalizeError(err: any): ApiResult<never>['error'] {
+  // 백엔드 표준 에러
   if (err?.data?.status === 'error' && err?.data?.data) {
-    const errorName = err.data.data.name?.toLowerCase() || ''
-    const errorMessage = err.data.data.message?.toLowerCase() || ''
-    return errorName.includes('csrf') || 
-           errorMessage.includes('csrf') ||
-           errorMessage.includes('forbidden') // CSRF 에러는 보통 403으로 오는 경우도 있음
+    const errorData = err.data.data
+    return {
+      code: errorData.name || 'UnknownError',
+      message: errorData.message || 'An error occurred',
+      details: errorData.fields ? { fields: errorData.fields } : undefined
+    }
   }
-  
-  // HTTP status code 확인 (403 Forbidden)
-  if (err?.status === 403 || err?.response?.status === 403) {
-    return true
-  }
-  
-  // 네트워크 에러 등의 경우 메시지로만 판단
-  const message = err?.message?.toLowerCase() || ''
-  return message.includes('csrf') || message.includes('forbidden')
-}
 
-export const isAuthError = (err: any): boolean => {
-  if (err?.status === 401) {
-    return true
-  }
-  
-  if (err?.data?.status === 'error' && err?.data?.data) {
-    const errorName = err.data.data.name?.toLowerCase() || ''
-    const errorMessage = err.data.data.message?.toLowerCase() || ''
-    
-    return (
-      errorName.includes('unauthorized') ||
-      errorName.includes('authentication') ||
-      errorMessage.includes('token') ||
-      errorMessage.includes('unauthorized')
-    )
-  }
-  
-  return false
-}
+  // HTTP 상태 기반 에러
+  const status = err?.statusCode || err?.status
+  if (status) {
+    const statusMessages: Record<number, string> = {
+      400: 'Bad Request',
+      401: 'Authentication required',
+      403: 'Access forbidden',
+      404: 'Resource not found',
+      409: 'Conflict',
+      422: 'Validation failed',
+      429: 'Too many requests',
+      500: 'Internal server error',
+      502: 'Bad gateway',
+      503: 'Service unavailable',
+      504: 'Gateway timeout'
+    }
 
-// 에러 응답 정규화
-export const normalizeError = <T>(err: any): ApiResponse<T> => {
-  // 백엔드 표준 에러 응답이면 그대로 반환
-  if (err?.data?.status === 'error' && err?.data?.data?.name && err?.data?.data?.message) {
-    return err.data as ApiResponse<T>
+    return {
+      code: `HTTP_${status}`,
+      message: statusMessages[status] || err?.statusMessage || `HTTP Error ${status}`,
+      details: { statusCode: status }
+    }
   }
-  
-  // 그 외의 경우 표준 포맷으로 변환
+
+  // 네트워크 에러
+  if (err?.name === 'FetchError' || err?.cause?.name === 'FetchError') {
+    return {
+      code: 'NETWORK_ERROR',
+      message: 'Network connection failed',
+      details: { originalError: err.message }
+    }
+  }
+
+  // 타임아웃
+  if (err?.name === 'AbortError' || err?.code === 'ECONNABORTED') {
+    return {
+      code: 'TIMEOUT',
+      message: 'Request timeout',
+      details: undefined
+    }
+  }
+
+  // 기본 에러
   return {
-    status: 'error',
-    data: {
-      name: 'RequestError',
-      message: err?.message || 'Request failed'
+    code: 'UNKNOWN_ERROR',
+    message: err?.message || 'An unexpected error occurred',
+    details: undefined
+  }
+}
+
+// ===== 응답 변환 =====
+
+export function transformToApiResult<T>(response: ApiResponse<T> | null | undefined): ApiResult<T> {
+  if (!response) {
+    return {
+      data: null,
+      error: {
+        code: 'NO_RESPONSE',
+        message: 'No response received'
+      }
+    }
+  }
+
+  if (isApiSuccess(response)) {
+    return {
+      data: response.data,
+      error: null
+    }
+  }
+
+  if (isApiError(response)) {
+    return {
+      data: null,
+      error: {
+        code: response.data.name,
+        message: response.data.message,
+        details: response.data.fields ? { fields: response.data.fields } : undefined
+      }
+    }
+  }
+
+  // Fallback
+  return {
+    data: null,
+    error: {
+      code: 'INVALID_RESPONSE',
+      message: 'Invalid response format'
     }
   }
 }
 
-// API 에러 핸들러 (로깅용)
-export const handleApiError = (errorData: ErrorData) => {
+// ===== 특수 에러 체크 =====
+
+export function isCsrfError(error: ApiResult<any>['error']): boolean {
+  if (!error) return false
+
+  return error.code === 'CSRF_ERROR' ||
+         error.code === 'HTTP_403' ||
+         error.message.toLowerCase().includes('csrf')
+}
+
+export function isAuthError(error: ApiResult<any>['error']): boolean {
+  if (!error) return false
+
+  return error.code === 'UnauthorizedException' ||
+         error.code === 'HTTP_401' ||
+         error.message.toLowerCase().includes('unauthorized') ||
+         error.message.toLowerCase().includes('authentication')
+}
+
+export function isValidationError(error: ApiResult<any>['error']): boolean {
+  if (!error) return false
+
+  return error.code === 'ValidationError' ||
+         error.code === 'HTTP_422' ||
+         (error.details !== undefined && 'fields' in error.details)
+}
+
+// ===== 쿼리 빌더 =====
+
+export function buildQueryString(params: Record<string, any>): string {
+  const searchParams = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return
+
+    if (Array.isArray(value)) {
+      value.forEach(v => searchParams.append(key, String(v)))
+    } else if (typeof value === 'object') {
+      searchParams.append(key, JSON.stringify(value))
+    } else {
+      searchParams.append(key, String(value))
+    }
+  })
+
+  return searchParams.toString()
+}
+
+// ===== 레거시 호환성 =====
+
+export function handleApiError(errorData: { name?: string; code?: string; message: string } | { code: string; message: string; details?: Record<string, any> }) {
+  const name = 'name' in errorData ? errorData.name : errorData.code
   console.error('API Error:', {
-    errorName: errorData.name,
+    errorName: name,
     errorMessage: errorData.message
   })
 }
-
-// 통합 useApiHelper 컴포저블
-export const useApiHelper = () => ({
-  handleApiError,
-  normalizeError,
-  isCsrfError,
-  isAuthError
-})

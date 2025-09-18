@@ -112,23 +112,22 @@ const handleSubmit = async () => {
 Located in `composables/api/`, these handle all backend communication:
 
 ```typescript
-// composables/api/useNuxtApi.ts
-export const useNuxtApi = async <T = any>(
+// composables/api/useNuxtApi.ts (Now contains useApi, useGet, usePost)
+export const useApi = async <T = any>(
   endpoint: string,
-  options: SimpleApiOptions = {}
+  options: ApiOptions = {}
 ) => {
-  const { body, query, context = {}, server = true } = options
   const config = useRuntimeConfig()
   const apiBasePath = config.public.NUXT_API_BASE_URL
   const authStore = useAuthStore()
   const { token } = storeToRefs(authStore)
 
-  return await useFetch<ApiResponse<T>>(`${apiBasePath}/${endpoint}`, {
-    method: body ? 'POST' : 'GET',
-    body,
-    query,
-    server,
-    onRequest: async ({ options }) => {
+  return await useFetch<ApiResult<T>>(`${apiBasePath}/${endpoint}`, {
+    method: options.method || 'GET',
+    body: options.body,
+    query: options.query,
+    server: options.server,
+    onRequest: async ({ options: fetchOptions }) => {
       const headers = new Headers()
 
       // JWT Token
@@ -137,25 +136,26 @@ export const useNuxtApi = async <T = any>(
       }
 
       // CSRF Token for POST requests
-      if (body && !context.skipCsrf) {
+      if (options.body && !options.skipCsrf) {
         const csrfToken = await authStore.getCsrfToken()
         if (csrfToken) {
           headers.set('X-CSRF-Token', csrfToken)
         }
       }
 
-      options.headers = headers
-    }
+      fetchOptions.headers = headers
+    },
+    transform: transformToApiResult<T>
   })
 }
 
 // Convenience methods
-export const useNuxtGet = <T = any>(endpoint: string, query?: any) => {
-  return useNuxtApi<T>(endpoint, { query })
+export const useGet = <T = any>(endpoint: string, query?: any, options: Omit<ApiOptions, 'method'> = {}) => {
+  return useApi<T>(endpoint, { ...options, method: 'GET', query })
 }
 
-export const useNuxtPost = <T = any>(endpoint: string, body?: any) => {
-  return useNuxtApi<T>(endpoint, { body })
+export const usePost = <T = any>(endpoint: string, body?: any, options: Omit<ApiOptions, 'method'> = {}) => {
+  return useApi<T>(endpoint, { ...options, method: 'POST', body })
 }
 ```
 
@@ -218,8 +218,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Actions
   const login = async (loginData: LoginData): Promise<boolean> => {
-    const { data, error } = await useNuxtPost<AuthResponse>('auth/login', loginData)
-    if (!error.value && data.value?.status === 'success') {
+    const { data, error } = await usePost<AuthResponse>('auth/login', loginData)
+    if (!error.value && data.value?.data) {
       setAuth(data.value.data)
       return true
     }
@@ -316,8 +316,8 @@ All API calls go through the custom composables:
 
 ```typescript
 // In components
-const { data, error } = await useNuxtGet<UserProfile>('auth/profile')
-const { data, error } = await useNuxtPost<AuthResponse>('auth/login', {
+const { data, error } = await useGet<UserProfile>('auth/profile')
+const { data, error } = await usePost<AuthResponse>('auth/login', {
   email: 'user@example.com',
   password: 'password'
 })
@@ -333,10 +333,13 @@ const { data, error } = await useNuxtPost<AuthResponse>('auth/login', {
 Inline TypeScript interfaces are used for API responses:
 
 ```typescript
-interface ApiResponse<T = any> {
-  status: 'success' | 'error'
-  data: T
-  message?: string
+interface ApiResult<T = any> {
+  data: T | null
+  error: {
+    code: string
+    message: string
+    details?: Record<string, any>
+  } | null
 }
 
 interface AuthResponse {

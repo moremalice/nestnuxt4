@@ -32,19 +32,19 @@ const dynamicMinHeight = computed(() => {
   return 'auto'
 })
 
-// 개인정보처리방침 상세 조회 (새로운 useNuxtPost 사용)
+// 개인정보처리방침 상세 조회 (새로운 usePost 사용)
 const selectPrivacy = async (privacyIdx: number) => {
-  const { data, error } = await useNuxtPost<PrivacyData>('policy/getPrivacyDetail', {
+  const { data } = await usePost<PrivacyData>('policy/getPrivacyDetail', {
     idx: Number(privacyIdx),
     lang: locale.value
   })
 
-  if (!error.value && data.value?.status === 'success') {
+  if (data.value?.data) {
     selectedPrivacy.value = data.value.data
     selectedIndex.value = privacyList.value.findIndex((privacy: PrivacyData) => privacy.idx === privacyIdx)
     isDropdownOpen.value = false
-  } else {
-    handleApiError(error.value?.data || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
   }
 }
 
@@ -52,23 +52,23 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-// 개인정보처리방침 목록 조회 (새로운 useNuxtPost 사용)
+// 개인정보처리방침 목록 조회 (새로운 usePost 사용)
 const loadPrivacyList = async () => {
-  const { data, error } = await useNuxtPost<PrivacyData[]>('policy/getPrivacyList', {
+  const { data } = await usePost<PrivacyData[]>('policy/getPrivacyList', {
     lang: locale.value,
     view_type: 'talk'
   })
 
-  if (!error.value && data.value?.status === 'success') {
-    privacyList.value = data.value.data
-    if (data.value.data.length > 0) {
+  if (data.value?.data) {
+    privacyList.value = data.value.data || []
+    if (data.value.data && data.value.data.length > 0 && data.value.data[0]?.idx) {
       await selectPrivacy(data.value.data[0].idx)
     } else {
       selectedPrivacy.value = null
       selectedIndex.value = 0
     }
-  } else {
-    handleApiError(error.value?.data || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
   }
 }
 

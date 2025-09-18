@@ -28,9 +28,9 @@ interface ErrorResponse {
 ## Architecture Flow
 
 ```
-Frontend ──useNuxtApi──> /api/nestjs/* ──HTTP──> Backend
+Frontend ──useApi──> /api/nestjs/* ──HTTP──> Backend
     ↓                       ↓                      ↓
-useNuxtGet/Post        Proxy Handler         TransformInterceptor
+useGet/Post            Proxy Handler         TransformInterceptor
     ↓                       ↓                      ↓
 Auto: Auth/CSRF/       Header forwarding     { status, data }
       Loading/Error     Cookie forwarding
@@ -41,10 +41,10 @@ Auto: Auth/CSRF/       Header forwarding     { status, data }
 ### Core Composables
 ```typescript
 // GET request
-const { data, error } = await useNuxtGet<UserData>('auth/profile')
+const { data, error } = await useGet<UserData>('auth/profile')
 
 // POST request
-const { data, error } = await useNuxtPost<LoginResponse>('auth/login', {
+const { data, error } = await usePost<LoginResponse>('auth/login', {
   email: 'user@example.com',
   password: 'password'
 })
@@ -55,7 +55,7 @@ const { data, error } = await useNuxtPost<LoginResponse>('auth/login', {
 - **CSRF Protection**: X-CSRF-Token header for POST requests (see [Authentication Architecture](./auth-security-architecture.md))
 - **Loading States**: Global loading UI management
 - **Error Handling**: 401 auto-retry with token refresh
-- **Type Safety**: Generic `ApiResponse<T>` pattern
+- **Type Safety**: Generic `ApiResult<T>` pattern
 
 ### Component Usage Example
 ```typescript
@@ -258,8 +258,8 @@ export default defineEventHandler(async (event) => {
 // see Authentication & Security Architecture guide
 export const useAuthStore = defineStore('auth', () => {
   const login = async (loginData: LoginData): Promise<boolean> => {
-    const { data } = await useNuxtPost<AuthResponse>('auth/login', loginData)
-    if (data.value?.status === 'success') {
+    const { data } = await usePost<AuthResponse>('auth/login', loginData)
+    if (data.value?.data) {
       setAuth(data.value.data)
       return true
     }
@@ -270,14 +270,14 @@ export const useAuthStore = defineStore('auth', () => {
 })
 ```
 
-### Auto-Authentication in useNuxtApi
+### Auto-Authentication in useApi
 ```typescript
 // composables/api/useNuxtApi.ts - For complete implementation,
 // see Frontend Patterns guide
-export const useNuxtApi = async <T>(endpoint: string, options = {}) => {
+export const useApi = async <T>(endpoint: string, options = {}) => {
   const authStore = useAuthStore()
 
-  return useFetch<ApiResponse<T>>(`/api/nestjs/${endpoint}`, {
+  return useFetch<ApiResult<T>>(`/api/nestjs/${endpoint}`, {
     onRequest: async ({ options }) => {
       // Auto JWT + CSRF token injection
       const headers = await prepareAuthHeaders(authStore, options.body)
@@ -289,7 +289,9 @@ export const useNuxtApi = async <T>(endpoint: string, options = {}) => {
       if (response?.status === 401) {
         await authStore.refreshToken()
       }
-    }
+    },
+
+    transform: transformToApiResult<T>
   })
 }
 ```
@@ -321,19 +323,20 @@ For complete security implementation details, see [Authentication & Security Arc
 ### Frontend Error Processing
 ```typescript
 // composables/utils/useApiHelper.ts
-export const normalizeError = <T>(err: any): ApiResponse<T> => {
+export const normalizeError = (err: any): ApiError => {
   // Backend standard error format
   if (err?.data?.status === 'error' && err?.data?.data?.name) {
-    return err.data as ApiResponse<T>
+    return {
+      code: err.data.data.name,
+      message: err.data.data.message,
+      details: err.data.data.details
+    }
   }
 
   // Normalize other errors
   return {
-    status: 'error',
-    data: {
-      name: 'RequestError',
-      message: err?.message || 'Request failed'
-    }
+    code: 'RequestError',
+    message: err?.message || 'Request failed'
   }
 }
 
@@ -359,11 +362,11 @@ interface ComponentApiTypes {
 }
 
 // 2. Use typed API calls
-const { data: profile } = await useNuxtGet<ComponentApiTypes['ProfileData']>('auth/profile')
+const { data: profile } = await useGet<ComponentApiTypes['ProfileData']>('auth/profile')
 
 const updateProfile = async (updates: ComponentApiTypes['UpdateProfileRequest']) => {
-  const { data, error } = await useNuxtPost<ComponentApiTypes['ProfileData']>('auth/profile', updates)
-  if (data.value?.status === 'success') {
+  const { data, error } = await usePost<ComponentApiTypes['ProfileData']>('auth/profile', updates)
+  if (data.value?.data) {
     // Handle success
   }
 }

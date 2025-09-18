@@ -3,7 +3,7 @@
 ## Tech Stack
 - **Core**: Nuxt 4.1.1 + Vue 3.5.21 + Pinia 3.0.3
 - **Dirs**: `app/pages`, `app/components`, `app/composables`, `app/stores`
-- **API**: `useNuxtApi`/`useNuxtGet`/`useNuxtPost` → `/api/nestjs/*` proxy
+- **API**: `useApi`/`useGet`/`usePost` → `/api/nestjs/*` proxy
 - **Features**: 15 languages i18n, auto-loading, SSR/CSR hybrid
 
 ## Key Patterns
@@ -34,6 +34,6 @@ public: {
 ```
 
 ## Prompt Recipes
-- **API Call**: `const { data, error } = await useNuxtGet<InlineType>('endpoint')`
+- **API Call**: `const { data } = await useGet<InlineType>('endpoint')`
 - **Component**: `<script setup>` + TypeScript interfaces + accessibility
 - **Page**: `useAsyncData` + auth middleware + SEO meta

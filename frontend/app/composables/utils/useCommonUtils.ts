@@ -147,11 +147,11 @@ export const backendFileDownload = async (
     fileName?: string,
 ): Promise<{ status: 'success' | 'error'; message?: string }> => {
     try {
-        const { data, error } = await useNuxtGet<{ url: string }>('file/get-download-url', {
+        const { data } = await useGet<{ url: string }>('file/get-download-url', {
             file_path: filePath
         });
 
-        if (!error.value && data.value?.status === 'success') {
+        if (data.value?.data) {
             const fileUrl = data.value.data.url;
 
             const fileResponse = await fetch(fileUrl);
@@ -178,13 +178,18 @@ export const backendFileDownload = async (
             }, 100);
 
             return { status: 'success' };
-        } else {
-            const errorData = error.value?.data || { name: 'DownloadError', message: 'Failed to get download URL' };
+        } else if (data.value?.error) {
+            const errorData = { name: data.value.error.code, message: data.value.error.message };
             handleApiError(errorData);
 
             return {
                 status: 'error',
                 message: errorData.message || 'Failed to get download URL'
+            };
+        } else {
+            return {
+                status: 'error',
+                message: 'Failed to get download URL'
             };
         }
 

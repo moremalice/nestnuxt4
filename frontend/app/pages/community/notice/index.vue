@@ -78,15 +78,15 @@ const loadNoticeList = async () => {
     lang: searchParams.lang
   }
 
-  const { data, error } = await useNuxtGet<NoticeListData>('community/getNoticeList', apiParams)
+  const { data } = await useGet<NoticeListData>('community/getNoticeList', apiParams)
 
-  if (!error.value && data.value?.status === 'success') {
+  if (data.value?.data) {
     noticeList.value = data.value.data.notice_list
     totalCount.value = data.value.data.notice_cnt
     pageOffset.value = data.value.data.offset
     totalPages.value = Math.ceil(data.value.data.notice_cnt / data.value.data.offset)
-  } else {
-    handleApiError(error.value || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
 
     // 기본값 설정
     noticeList.value = []

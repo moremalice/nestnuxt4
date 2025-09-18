@@ -20,7 +20,7 @@
 
 ## Architecture Summary
 - **Auth**: Web (HttpOnly cookies + CSRF), Mobile (Bearer tokens)
-- **API**: `useNuxtApi`/`useNuxtGet`/`useNuxtPost` → `/api/nestjs/*` proxy → NestJS
+- **API**: `useApi`/`useGet`/`usePost` → `/api/nestjs/*` proxy → NestJS
 - **Security**: Private backend URLs (server-only), public proxy paths (client-safe)
 - **SSR**: Server-side credential forwarding, no secrets in client bundles
 

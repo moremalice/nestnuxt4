@@ -29,15 +29,15 @@ if (isNaN(idx) || idx <= 0 || !Number.isInteger(idx)) {
 const noticeDetail = ref<NoticeDetailData | null>(null)
 
 const loadNoticeDetail = async () => {
-  const { data, error } = await useNuxtPost<NoticeDetailData>('community/getNoticeDetail', {
+  const { data } = await usePost<NoticeDetailData>('community/getNoticeDetail', {
     idx: idx,
     lang: locale.value
   })
 
-  if (!error.value && data.value?.status === 'success') {
+  if (data.value?.data) {
     noticeDetail.value = data.value.data
-  } else {
-    handleApiError(error.value || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
     await navigateTo('/community/notice')
   }
 }

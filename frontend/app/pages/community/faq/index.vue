@@ -27,16 +27,16 @@ const faqBodyRefs = ref<HTMLElement[]>([])
 const langCode = ref(locale.value)
 
 const fetchFaqList = async () => {
-  const { data, error } = await useNuxtPost<FaqListData>('community/getFaqList', {
+  const { data } = await usePost<FaqListData>('community/getFaqList', {
     lang: langCode.value,
   })
 
-  if (!error.value && data.value?.status === 'success') {
-    faqList.value = data.value.data.faq_list.map(faq => ({ ...faq, open: false }))
+  if (data.value?.data) {
+    faqList.value = data.value.data.faq_list.map((faq: any) => ({ ...faq, open: false }))
     await nextTick()
     measureHeights()
-  } else {
-    handleApiError(error.value?.data || data.value?.data)
+  } else if (data.value?.error) {
+    handleApiError(data.value.error)
 
     faqList.value = []
     heights.value = {}

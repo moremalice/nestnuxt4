@@ -79,7 +79,7 @@ const loading = ref(false)
 const handleLogin = async () => {
   loading.value = true
   try {
-    const { data } = await useNuxtPost<AuthResponse>('auth/login', {
+    const { data } = await usePost<AuthResponse>('auth/login', {
       email: email.value,
       password: password.value
     })
@@ -103,7 +103,7 @@ const handleLogin = async () => {
 definePageMeta({ middleware: 'auth' })
 
 // API call with automatic JWT injection
-const { data: profile } = await useNuxtGet<UserProfile>('auth/profile')
+const { data: profile } = await useGet<UserProfile>('auth/profile')
 </script>
 
 <template>
@@ -156,17 +156,16 @@ For complete API communication patterns, see [API Communication Architecture](./
 
 ```typescript
 // GET request (automatic JWT header addition)
-const { data, error } = await useNuxtGet<UserType>('auth/profile')
+const { data, error } = await useGet<UserType>('auth/profile')
 
 // POST request (automatic JWT + CSRF header addition)
-const { data, error } = await useNuxtPost<ResultType>('api/create', {
+const { data, error } = await usePost<ResultType>('api/create', {
   title: 'New Post',
   content: 'Post content'
 })
 
 // Advanced options - see API Communication guide for full details
-const { data } = await useNuxtApi<ResponseType>({
-  url: 'api/advanced',
+const { data } = await useApi<ResponseType>('api/advanced', {
   method: 'PUT',
   body: updateData
 })
@@ -252,7 +251,7 @@ For complete backend implementation patterns, see [Backend Patterns (NestJS)](./
 - Automatic refresh with 30-second buffer before expiration
 - Cross-tab synchronization via BroadcastChannel
 
-**useNuxtApi Composables:**
+**useApi Composables:**
 - Automatic JWT Bearer header addition to all requests
 - Automatic CSRF header addition to POST/PUT/DELETE requests
 - Automatic token refresh and request retry on 401 responses
