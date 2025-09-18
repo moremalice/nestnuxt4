@@ -10,7 +10,8 @@
       "Read(/frontend/**)",
       "Read(/backend/**)",
       "Read(/docs/**)",
-      "Read(/CLAUDE.md)"
+      "Read(/CLAUDE.md)",
+      "Bash(find:*)"
     ],
     "ask": [
       "Bash(npm run *)",
