@@ -23,7 +23,7 @@ export const useRecaptcha = () => {
   const lastError = ref<string | null>(null)
 
   const config = useRuntimeConfig()
-  const configSiteKey = config.public.NUXT_RECAPTCHA_SITE_KEY
+  const configSiteKey = config.public.recaptchaSiteKey
   const siteKey = configSiteKey || ''
   
   console.log('reCAPTCHA: Using site key:', siteKey.substring(0, 20) + '...')

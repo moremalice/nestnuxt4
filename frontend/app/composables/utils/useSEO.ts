@@ -24,7 +24,7 @@ const SEO_CONSTANTS = {
  * -------------------------------------------------------------------------- */
 const getCanonicalHost = () => {
     const config = useRuntimeConfig()
-    return config.public.NUXT_APP_SITE_URL
+    return config.public.siteUrl
 }
 
 const toAbsolute = (src?: string) => {

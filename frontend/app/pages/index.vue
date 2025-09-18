@@ -5,7 +5,7 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const videoPlayer = ref<HTMLVideoElement>()
 const config = useRuntimeConfig()
-const env = config.public.NUXT_APP_ENVIRONMENT
+const env = config.public.appEnv
 
 // 비디오 소스 가져오기 (파일 서버)
 const getVideoSrc = () => {
@@ -13,7 +13,7 @@ const getVideoSrc = () => {
     case 'development':
       return '/api/proxy/vod/pikitalk/pikitalk.m3u8'
     case 'production':
-      return `${config.public.NUXT_CDN_BASE_URL}/data/vod/pikitalk/pikitalk.m3u8`
+      return `${config.public.cdnBase}/data/vod/pikitalk/pikitalk.m3u8`
     default:
       return '/api/proxy/vod/pikitalk/pikitalk.m3u8'
   }
@@ -25,7 +25,7 @@ const getYmlSrc = (ymlName: string) => {
     case 'development':
       return `/api/proxy/${ymlName}.yml`
     case 'production':
-      return `${config.public.NUXT_CDN_BASE_URL}/data/${ymlName}.yml`
+      return `${config.public.cdnBase}/data/${ymlName}.yml`
     default:
       return `/api/proxy/${ymlName}.yml`
   }
@@ -107,7 +107,7 @@ const getDownloadUrl = async (ymlName: string) => {
     const path = dmgFileNames?.url
 
     if (path) {
-      await navigateTo(`${config.public.NUXT_CDN_BASE_URL}/data/${path}`, { external: true })
+      await navigateTo(`${config.public.cdnBase}/data/${path}`, { external: true })
     }
   } catch (error) {
     console.error("YML data ", error)
@@ -165,7 +165,7 @@ onMounted(async () => {
                   <img src="/images/content/piki/icon_ggplay.svg" alt="">
                 </a>
                 <a
-                    :href="`${config.public.NUXT_CDN_BASE_URL}/data/PikiTalk Setup 0.7.0.exe`"
+                    :href="`${config.public.cdnBase}/data/PikiTalk Setup 0.7.0.exe`"
                     target="_blank"
                     class="btn_white_line_sq96"
                 >
@@ -201,7 +201,7 @@ onMounted(async () => {
                   <img src="/images/content/piki/icon_ggplay.svg" alt="">
                 </a>
                 <a
-                    :href="`${config.public.NUXT_CDN_BASE_URL}/data/PikiTalk Setup 0.7.0.exe`"
+                    :href="`${config.public.cdnBase}/data/PikiTalk Setup 0.7.0.exe`"
                     class="btn_layer btn_white_line_sq64 win_down_btn"
                 >
                   <img src="/images/content/talk/icon_download_win.svg" alt="">
@@ -304,7 +304,7 @@ onMounted(async () => {
               <img src="/images/content/piki/icon_ggplay.svg" alt="">
             </a>
             <a
-                :href="`${config.public.NUXT_CDN_BASE_URL}/data/PikiTalk Setup 0.7.0.exe`"
+                :href="`${config.public.cdnBase}/data/PikiTalk Setup 0.7.0.exe`"
                 class="btn_layer btn_white_line_sq64"
             >
               <img src="/images/content/talk/icon_download_win.svg" alt="" :title="t('common_05')">

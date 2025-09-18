@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const config = useRuntimeConfig()
   
   // 프로덕션이 아닌 환경에서만 상세 로깅 및 성능 측정
-  const isDev = config.public.NUXT_APP_ENVIRONMENT !== 'production'
+  const isDev = config.public.appEnv !== 'production'
   const startTime = isDev ? performance.now() : 0
 
   // 클라이언트 사이드에서만 실행

@@ -18,7 +18,7 @@
             id="qr-input"
             v-model="qrText"
             type="text"
-            :placeholder="config.public.NUXT_APP_SITE_URL"
+            :placeholder="config.public.siteUrl"
             class="text-input"
           />
         </div>
@@ -90,7 +90,7 @@ definePageMeta({
 
 // 반응형 데이터
 const config = useRuntimeConfig()
-const qrText = ref(config.public.NUXT_APP_SITE_URL)
+const qrText = ref(config.public.siteUrl)
 
 // QR 코드 옵션
 const qrOptions = ref({

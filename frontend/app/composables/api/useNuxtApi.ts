@@ -61,7 +61,7 @@ export function useApi<T = unknown>(
   } = {}
 ) {
   const config = useRuntimeConfig()
-  const apiBase = config.public.NUXT_API_BASE_URL
+  const apiBase = config.public.apiBase
 
   const {
     method = 'GET',

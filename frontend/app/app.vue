@@ -16,7 +16,7 @@ useHead({
     if (!locales.value || locales.value.length === 0) return []
 
     const links: Array<{ rel: string; hreflang: string; href: string }> = []
-    const siteUrl = config.public.NUXT_APP_SITE_URL
+    const siteUrl = config.public.siteUrl
 
     for (const loc of locales.value) {
       const localeCode = typeof loc === 'string' ? loc : loc.code

@@ -23,13 +23,13 @@
 ## Environment Security
 ```typescript
 // Private (server-only) - Hidden from client bundles
-NEST_BACKEND_BASE_URL: config.NUXT_BACKEND_BASE_URL
+backendBaseUrl: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
 
 // Public (client-exposed) - Safe for bundles
 public: {
-  NUXT_API_BASE_URL: '/api/nestjs',        // Proxy only
-  NUXT_APP_SITE_URL: config.public.url,   // SEO
-  NUXT_CDN_BASE_URL: config.cdn.url       // Static resources
+  apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',        // Proxy only
+  siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',   // SEO
+  cdnBase: process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com'       // Static resources
 }
 ```
 

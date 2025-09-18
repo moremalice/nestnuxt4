@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
     try {
         const config = useRuntimeConfig()
-        const cdnBaseUrl = config.public.NUXT_CDN_BASE_URL
+        const cdnBaseUrl = config.public.cdnBase
         const upstream = await fetch(`${cdnBaseUrl}/data/${path}`, { headers: forward })
 
         // 핵심: Response 객체를 그대로 반환 (헤더/상태/스트림 자동 전달)

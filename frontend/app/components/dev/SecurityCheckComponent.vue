@@ -1,7 +1,7 @@
 <!-- components/dev/SecurityCheckComponent.vue -->
 <script setup lang="ts">
 const runtimeConfig = useRuntimeConfig()
-const isLocal = runtimeConfig.public.NUXT_APP_ENVIRONMENT === 'local'
+const isLocal = runtimeConfig.public.appEnv === 'local'
 
 interface SecurityCheck {
   name: string

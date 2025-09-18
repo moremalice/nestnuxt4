@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   
   try {
     const config = useRuntimeConfig()
-    const nestApiUrl = config.NEST_BACKEND_BASE_URL
+    const nestApiUrl = config.backendBaseUrl
     
     const response = await $fetch.raw(`${nestApiUrl}/${path}`, {
       method,

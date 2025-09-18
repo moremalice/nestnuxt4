@@ -5,12 +5,6 @@ export default defineNuxtConfig({
     // 하이브리드 렌더링: 기본 CSR, 특정 페이지만 SSR
     ssr: false,
 
-    experimental: {
-        asyncContext: true,
-        // 빌드 재현성 향상을 위한 실험적 기능
-        payloadExtraction: false
-    },
-
     devtools: {
         enabled: process.env.NUXT_PUBLIC_APP_ENV !== 'production',
         timeline: {
@@ -202,21 +196,23 @@ export default defineNuxtConfig({
     runtimeConfig: {
         // ======== Server-Only (Private) ========
         // Backend API URL - Hidden from client bundles for security
-        NEST_BACKEND_BASE_URL: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
+        backendBaseUrl: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
+        // Sitemap preview setting for development/testing
+        sitemapPreview: process.env.NUXT_SITEMAP_PREVIEW || '0',
 
         // ======== Client-Exposed (Public) ========
         // Variables safe for client-side exposure
         public: {
             // Application environment identifier
-            NUXT_APP_ENVIRONMENT: process.env.NUXT_PUBLIC_APP_ENV || 'local',
+            appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'local',
             // API proxy path (hides real backend URL from client)
-            NUXT_API_BASE_URL: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
+            apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
             // Site URL for SEO, canonical URLs, and meta tags
-            NUXT_APP_SITE_URL: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+            siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
             // CDN/File server URL for static resources and downloads
-            NUXT_CDN_BASE_URL: process.env.NUXT_PUBLIC_CDN_BASE || '/api/proxy',
+            cdnBase: process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com',
             // reCAPTCHA site key for client-side verification
-            NUXT_RECAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+            recaptchaSiteKey: process.env.NUXT_PUBLIC_RECAPTCHA_SITE_KEY || ''
         }
     }
 })
