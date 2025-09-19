@@ -30,8 +30,9 @@ export class CsrfService {
       const csrfSecret = this.getCsrfSecret();
       this.csrfUtils = doubleCsrf({
         getSecret: () => csrfSecret,
-        getCsrfTokenFromRequest: this.getCsrfTokenFromRequest,
-        getSessionIdentifier: this.getSessionIdentifier,
+        getCsrfTokenFromRequest: (req: Request) =>
+          this.getCsrfTokenFromRequest(req),
+        getSessionIdentifier: (req: Request) => this.getSessionIdentifier(req),
         cookieName: isProd ? '__Host-csrf-token' : 'csrf-token',
         cookieOptions: {
           httpOnly: true,
@@ -49,9 +50,9 @@ export class CsrfService {
       this.enabled = true;
       this.reason = '';
       // console.log('[CSRF] protection enabled');
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.enabled = false;
-      this.reason = error?.message || 'unknown error';
+      this.reason = (error as Error)?.message || 'unknown error';
       console.error('❌ Failed to initialize CSRF utilities:', error);
 
       if (!this.failOpen) {
@@ -65,7 +66,7 @@ export class CsrfService {
     }
   }
 
-  private getCsrfSecret = (): string => {
+  private getCsrfSecret(): string {
     const nodeEnv = this.config.get<string>('NODE_ENV', 'local');
     const isProd = nodeEnv === 'production';
     const secret = this.config.get<string>('CSRF_SECRET');
@@ -78,43 +79,49 @@ export class CsrfService {
     }
 
     return 'dev-fallback-key-configure-in-production';
-  };
+  }
 
   private getCsrfTokenFromRequest(req: Request): string | undefined {
     const token =
       (req.headers['x-csrf-token'] as string) ||
       (req.headers['csrf-token'] as string) ||
       (req.headers['x-xsrf-token'] as string) ||
-      req.body?._token;
+      ((req.body as Record<string, unknown>)?._token as string | undefined);
     return token;
   }
 
-  private getSessionIdentifier = (req: Request): string => {
+  private getSessionIdentifier(req: Request): string {
     // Ensure cookies object exists
-    const cookies = (req as any).cookies || {};
-    const sid = cookies['csrf-sid'];
+    const cookies =
+      (req as Request & { cookies?: Record<string, string> }).cookies || {};
+    const sid = cookies['csrf-sid'] as string | undefined;
     if (sid) {
       return sid;
     }
 
     // fallback: IP + User-Agent hash
     const ip =
-      (req as any).ip || (req.socket as any)?.remoteAddress || 'unknown';
-    const ua = (req as any).get?.('user-agent') || 'unknown';
+      (req as Request & { ip?: string }).ip ||
+      (req.socket as { remoteAddress?: string })?.remoteAddress ||
+      'unknown';
+    const ua =
+      (req as Request & { get?: (header: string) => string }).get?.(
+        'user-agent',
+      ) || 'unknown';
 
     return crypto
       .createHash('sha256')
       .update(`${ip}-${ua}`)
       .digest('hex')
       .slice(0, 32);
-  };
+  }
 
   get protection() {
     if (this.enabled && this.csrfUtils?.doubleCsrfProtection) {
       return this.csrfUtils.doubleCsrfProtection;
     }
     // no-op middleware
-    return (req: any, res: any, next: any) => {
+    return (req: Request, res: Response, next: () => void) => {
       if (this.reason) {
         res.setHeader('X-CSRF-Disabled-Reason', this.reason);
       }

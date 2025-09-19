@@ -137,7 +137,7 @@ export class RecaptchaStrategy {
     const formData = new URLSearchParams();
     Object.entries(requestData).forEach(([key, value]) => {
       if (value) {
-        formData.append(key, value);
+        formData.append(key, String(value));
       }
     });
 

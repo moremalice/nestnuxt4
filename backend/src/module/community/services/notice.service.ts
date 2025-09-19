@@ -10,7 +10,11 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CommonService } from '../../../common/common.service';
 import { NoticeEntity } from '../entities/notice.entity';
-import { GetNoticeListDto, GetNoticeDetailDto } from '../dto/notice.dto';
+import {
+  GetNoticeListDto,
+  GetNoticeDetailDto,
+  NoticeDetailResponse,
+} from '../dto/notice.dto';
 
 @Injectable()
 export class NoticeService {
@@ -125,30 +129,32 @@ export class NoticeService {
     }
   }
 
-  async getNoticeDetail(dto: GetNoticeDetailDto) {
+  async getNoticeDetail(
+    dto: GetNoticeDetailDto,
+  ): Promise<NoticeDetailResponse> {
     const { idx, lang } = dto;
 
     const fileDomain = this.configService.get<string>('PIKI_DOMAIN');
     const fileDataPath = this.configService.get<string>('FILE_DATA_PATH');
 
-    let notice: any = null;
-    let prevNotice: any = null;
-    let nextNotice: any = null;
+    let notice: NoticeDetailResponse | null = null;
+    let prevNotice: { idx: number; title: string } | null = null;
+    let nextNotice: { idx: number; title: string } | null = null;
 
     // 현재 공지사항 조회
     try {
-      notice = await this.noticeRepository
+      notice = (await this.noticeRepository
         .createQueryBuilder('tbe')
         .leftJoin('tbl_uploads', 'tu', 'tbe.file_idx = tu.file_idx')
         .select('tbe.idx', 'idx')
         .addSelect('tbe.title', 'title')
-        .addSelect('tbe.contents', 'contents')
+        .addSelect('tbe.contents', 'content')
         .addSelect('tbe.is_html', 'is_html')
         .addSelect('tbe.file_idx', 'file_idx')
         .addSelect('tbe.link', 'link')
         .addSelect('tbe.target', 'target')
         .addSelect('tbe.target_idx', 'target_idx')
-        .addSelect('tbe.reg_dt', 'reg_dt')
+        .addSelect('tbe.reg_dt', 'created_at')
         .addSelect('UNIX_TIMESTAMP(tbe.reg_dt)', 'reg_stamp')
         .addSelect('tu.filepath_resize', 'file_path_resize')
         .addSelect('tu.name_origin', 'name_origin')
@@ -165,13 +171,14 @@ export class NoticeService {
           'IF(tbe.reg_dt >= NOW() - INTERVAL 24 HOUR, "O", "X")',
           'is_new',
         )
+        .addSelect(`'${lang}'`, 'lang')
         .where('tbe.idx = :idx', { idx })
         .andWhere(
           'JSON_SEARCH(LOWER(JSON_EXTRACT(tbe.view_type, "$[*].type")), "one", LOWER("talk")) IS NOT NULL',
         )
         .andWhere('tbe.lang = :lang', { lang })
         .andWhere('tbe.state = :state', { state: '10' })
-        .getRawOne();
+        .getRawOne()) as NoticeDetailResponse | null;
     } catch (error) {
       console.error('Notice detail query error:', error);
       throw new BadRequestException(
@@ -187,7 +194,7 @@ export class NoticeService {
 
     // 이전/다음 공지사항 조회를 병렬로 처리
     try {
-      const [prevResult, nextResult] = await Promise.all([
+      const [prevResult, nextResult] = (await Promise.all([
         // 이전 공지사항 조회 (현재 글보다 작은 idx 중 가장 큰 값)
         this.noticeRepository
           .createQueryBuilder('tbe')
@@ -217,13 +224,22 @@ export class NoticeService {
           .orderBy('tbe.idx', 'ASC')
           .limit(1)
           .getRawOne(),
-      ]);
-      prevNotice = prevResult;
-      nextNotice = nextResult;
+      ])) as [
+        { idx: number; title: string } | undefined,
+        { idx: number; title: string } | undefined,
+      ];
+      prevNotice = prevResult || null;
+      nextNotice = nextResult || null;
     } catch (error) {
       console.error('Previous/Next notice query error:', error);
       prevNotice = null;
       nextNotice = null;
+    }
+
+    if (!notice) {
+      throw new NotFoundException(
+        this.i18n.translate('community.NOTICE_NOT_FOUND'),
+      );
     }
 
     return {

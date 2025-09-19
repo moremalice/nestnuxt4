@@ -14,7 +14,7 @@ export class GetDownloadUrlQueryDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(1024)
-  @Matches(/^(?!\/)(?!.*\.\.)(?!.*:\/\/)(?!.*\\)[A-Za-z0-9._\-\/%]+$/, {
+  @Matches(/^(?!\/)(?!.*\.\.)(?!.*:\/\/)(?!.*\\)[A-Za-z0-9._\-/%]+$/, {
     message:
       'file_path must be a relative path without protocol, backslash, leading slash, or ".."',
   })

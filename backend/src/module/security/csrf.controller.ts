@@ -64,12 +64,16 @@ export class CsrfController {
     },
   })
   @ApiResponse({ status: 500, description: 'CSRF Token 발급 실패' })
-  async getCsrfToken(
+  getCsrfToken(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<CsrfTokenResponseDto> {
+  ): CsrfTokenResponseDto {
     try {
-      if (!(req as any).cookies?.['csrf-sid']) {
+      if (
+        !(req as Request & { cookies?: Record<string, string> }).cookies?.[
+          'csrf-sid'
+        ]
+      ) {
         const nodeEnv = this.configService.get<string>('NODE_ENV', 'local');
         const isProd = nodeEnv === 'production';
         const sessionId = randomUUID();
@@ -82,13 +86,16 @@ export class CsrfController {
           secure: isProd,
         });
 
-        (req as any).cookies = (req as any).cookies || {};
-        (req as any).cookies['csrf-sid'] = sessionId;
+        const reqWithCookies = req as Request & {
+          cookies: Record<string, string>;
+        };
+        reqWithCookies.cookies = reqWithCookies.cookies || {};
+        reqWithCookies.cookies['csrf-sid'] = sessionId;
       }
 
       const token = this.csrfService.generateToken(req, res);
       return { csrfToken: token };
-    } catch (error: any) {
+    } catch {
       throw new InternalServerErrorException('Failed to generate CSRF Token');
     }
   }
@@ -103,7 +110,7 @@ export class CsrfController {
     description: '상태 조회 성공',
     type: CsrfStatusResponseDto,
   })
-  async getCsrfStatus(): Promise<CsrfStatusResponseDto> {
+  getCsrfStatus(): CsrfStatusResponseDto {
     return this.csrfService.status();
   }
 }

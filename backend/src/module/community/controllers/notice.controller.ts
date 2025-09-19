@@ -7,7 +7,11 @@ import {
   ApiSecurity,
 } from '@nestjs/swagger';
 import { NoticeService } from '../services/notice.service';
-import { GetNoticeListDto, GetNoticeDetailDto } from '../dto/notice.dto';
+import {
+  GetNoticeListDto,
+  GetNoticeDetailDto,
+  NoticeDetailResponse,
+} from '../dto/notice.dto';
 import { ConfigService } from '@nestjs/config';
 
 @ApiTags('WEB')
@@ -30,7 +34,9 @@ export class NoticeController {
   @ApiResponse({ status: 404, description: '공지사항을 찾을 수 없음' })
   @ApiSecurity('csrf-token')
   @Post('getNoticeDetail')
-  async getNoticeDetail(@Body() dto: GetNoticeDetailDto) {
+  async getNoticeDetail(
+    @Body() dto: GetNoticeDetailDto,
+  ): Promise<NoticeDetailResponse> {
     return await this.noticeService.getNoticeDetail(dto);
   }
 }

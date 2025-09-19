@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RecaptchaStrategy } from './recaptcha.strategy';
-import { RecaptchaValidationResult } from '../interfaces/recaptcha.interface';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -48,12 +47,10 @@ describe('RecaptchaStrategy', () => {
 
   describe('validate', () => {
     it('should return disabled validation when reCAPTCHA is disabled', async () => {
-      configService.get.mockImplementation(
-        (key: string, defaultValue?: any) => {
-          if (key === 'RECAPTCHA_ENABLED') return false;
-          return 'mock-value';
-        },
-      );
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'RECAPTCHA_ENABLED') return false;
+        return 'mock-value';
+      });
 
       const result = await strategy.validate('test-token');
 
@@ -62,12 +59,10 @@ describe('RecaptchaStrategy', () => {
     });
 
     it('should return error when secret key is missing', async () => {
-      configService.get.mockImplementation(
-        (key: string, defaultValue?: any) => {
-          if (key === 'RECAPTCHA_SECRET_KEY') return '';
-          return 'mock-value';
-        },
-      );
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'RECAPTCHA_SECRET_KEY') return '';
+        return 'mock-value';
+      });
 
       const result = await strategy.validate('test-token');
 
@@ -93,7 +88,7 @@ describe('RecaptchaStrategy', () => {
       (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+      } as Response);
 
       const result = await strategy.validate(
         'valid-token',
@@ -119,7 +114,7 @@ describe('RecaptchaStrategy', () => {
       (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+      } as Response);
 
       const result = await strategy.validate('low-score-token');
 
@@ -141,7 +136,7 @@ describe('RecaptchaStrategy', () => {
       (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+      } as Response);
 
       const result = await strategy.validate(
         'valid-token',
@@ -165,7 +160,7 @@ describe('RecaptchaStrategy', () => {
       (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(mockResponse),
-      } as any);
+      } as Response);
 
       const result = await strategy.validate('invalid-token');
 

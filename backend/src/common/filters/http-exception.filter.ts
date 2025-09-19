@@ -35,7 +35,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'local');
     const isDev = nodeEnv !== 'production';
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let exceptionName = 'InternalServerError';
 

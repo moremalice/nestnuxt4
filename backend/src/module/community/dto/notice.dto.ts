@@ -61,3 +61,15 @@ export class GetNoticeDetailDto {
   @Transform(({ value }) => (value === 'ko' ? 'ko' : 'en'))
   lang?: string = 'ko';
 }
+
+export interface NoticeDetailResponse {
+  idx: number;
+  title: string;
+  content: string;
+  lang: string;
+  created_at: string;
+  prev_idx: number | null;
+  prev_title: string | null;
+  next_idx: number | null;
+  next_title: string | null;
+}

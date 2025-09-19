@@ -8,6 +8,8 @@ export class ProxyAwareThrottlerGuard extends ThrottlerGuard {
     const ips = req.ips as string[] | undefined;
     const ip = req.ip as string | undefined;
     const hostname = req.hostname as string | undefined;
-    return Promise.resolve((Array.isArray(ips) && ips[0]) || ip || hostname || 'unknown');
+    return Promise.resolve(
+      (Array.isArray(ips) && ips[0]) || ip || hostname || 'unknown',
+    );
   }
 }

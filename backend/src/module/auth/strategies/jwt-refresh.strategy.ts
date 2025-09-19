@@ -38,7 +38,9 @@ export class JwtRefreshStrategy extends PassportStrategy(
         // 그 다음 쿠키에서 토큰 추출 시도 (웹용)
         (request: Request) => {
           const refreshCookieName = getRefreshCookieName(configService);
-          const token = request?.cookies?.[refreshCookieName];
+          const token = request?.cookies?.[refreshCookieName] as
+            | string
+            | undefined;
           return typeof token === 'string' ? token : null;
         },
       ]),

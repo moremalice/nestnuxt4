@@ -15,11 +15,14 @@ export class SmartCsrfMiddleware implements NestMiddleware {
     }
 
     // CSRF 라이브러리를 위한 쿠키 객체 존재 보장
-    if (!(req as any).cookies) {
-      (req as any).cookies = {};
+    const reqWithCookies = req as Request & {
+      cookies?: Record<string, string>;
+    };
+    if (!reqWithCookies.cookies) {
+      reqWithCookies.cookies = {};
     }
 
     // 웹 클라이언트용 이중 CSRF 보호 적용
-    return this.csrfService.protection(req as any, res as any, next as any);
+    return this.csrfService.protection(req, res, next);
   }
 }
