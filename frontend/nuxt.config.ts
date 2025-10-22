@@ -220,7 +220,7 @@ export default defineNuxtConfig({
             // Application environment identifier
             appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'local',
             // API proxy path (hides real backend URL from client)
-            apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
+            apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
             // Site URL components for flexible port management
             siteProtocol: process.env.NUXT_PUBLIC_SITE_PROTOCOL || 'http',
             siteHost: process.env.NUXT_PUBLIC_SITE_HOST || 'localhost',
