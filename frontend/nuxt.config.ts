@@ -50,7 +50,12 @@ export default defineNuxtConfig({
     ],
 
     site: {
-        url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        url: (() => {
+            const protocol = process.env.NUXT_PUBLIC_SITE_PROTOCOL || 'http';
+            const host = process.env.NUXT_PUBLIC_SITE_HOST || 'localhost';
+            const port = process.env.NUXT_PUBLIC_SITE_PORT || '3000';
+            return port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
+        })(),
         name: 'Pikitalk',
         indexable: process.env.NUXT_PUBLIC_APP_ENV === 'production' || process.env.NUXT_SITEMAP_PREVIEW === '1'
     },
@@ -195,8 +200,17 @@ export default defineNuxtConfig({
 
     runtimeConfig: {
         // ======== Server-Only (Private) ========
-        // Backend API URL - Hidden from client bundles for security
-        backendBaseUrl: process.env.NUXT_BACKEND_BASE_URL || 'http://localhost:3020',
+        // Backend API URL components - Hidden from client bundles for security
+        backendProtocol: process.env.NUXT_BACKEND_PROTOCOL || 'http',
+        backendHost: process.env.NUXT_BACKEND_HOST || 'localhost',
+        backendPort: process.env.NUXT_BACKEND_PORT || '3020',
+        // Computed backend URL for backward compatibility
+        backendBaseUrl: (() => {
+            const protocol = process.env.NUXT_BACKEND_PROTOCOL || 'http';
+            const host = process.env.NUXT_BACKEND_HOST || 'localhost';
+            const port = process.env.NUXT_BACKEND_PORT || '3020';
+            return port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
+        })(),
         // Sitemap preview setting for development/testing
         sitemapPreview: process.env.NUXT_SITEMAP_PREVIEW || '0',
 
@@ -207,8 +221,17 @@ export default defineNuxtConfig({
             appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'local',
             // API proxy path (hides real backend URL from client)
             apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api/nestjs',
-            // Site URL for SEO, canonical URLs, and meta tags
-            siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+            // Site URL components for flexible port management
+            siteProtocol: process.env.NUXT_PUBLIC_SITE_PROTOCOL || 'http',
+            siteHost: process.env.NUXT_PUBLIC_SITE_HOST || 'localhost',
+            sitePort: process.env.NUXT_PUBLIC_SITE_PORT || '3000',
+            // Computed site URL for backward compatibility
+            siteUrl: (() => {
+                const protocol = process.env.NUXT_PUBLIC_SITE_PROTOCOL || 'http';
+                const host = process.env.NUXT_PUBLIC_SITE_HOST || 'localhost';
+                const port = process.env.NUXT_PUBLIC_SITE_PORT || '3000';
+                return port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
+            })(),
             // CDN/File server URL for static resources and downloads
             cdnBase: process.env.NUXT_PUBLIC_CDN_BASE || 'https://pikitalk.com',
             // reCAPTCHA site key for client-side verification
