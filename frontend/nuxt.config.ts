@@ -192,7 +192,7 @@ export default defineNuxtConfig({
         },
 
         // === NestJS API 프록시 ===
-        '/api/nestjs/**': {
+        '/api/**': {
             cors: true,
             headers: { 'access-control-allow-credentials': 'true' }
         }
